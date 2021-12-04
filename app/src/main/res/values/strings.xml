@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">MoveAble</string>
+    <string name="descr_main_BluetoothSearch">button to search for bluetooth devices</string>
+    <string name="button_settings_save">Save</string>
+    <string name="nav_close">Close navigation drawer</string>
+    <string name="nav_open">Open navigation drawer</string>
+    <string name="tv_settings_SampF">Sampling Frequency:</string>
+    <string name="hint_savedialog">Filename.ser</string>
+    <string name="text_savedialog">Thank you for using our app. \nPlease choose your wanted filename to save the results</string>
+    <string name="button_txt_main_start">Record</string>
+    <string name="button_txt_main_stop">Save</string>
+
+    <string-array name="frequencies">
+        <item> 13 Hz</item>
+        <item> 26 Hz</item>
+        <item> 52 Hz</item>
+        <item> 104 Hz</item>
+        <item> 208 Hz</item>
+        <item> 416 Hz </item>
+        <item> 833 Hz </item>
+    </string-array>
+</resources>

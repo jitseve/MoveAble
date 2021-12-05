@@ -16,6 +16,10 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.widget.Toolbar;
 
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -28,7 +32,7 @@ import com.google.android.material.navigation.NavigationView;
 
 import kth.jjve.moveable.dialogs.SaveDialog;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
 
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
@@ -39,6 +43,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     /*------------------------- PREFS ---------------------*/
 
+    /*---------------- INTERNAL SENSORS -------------------*/
+    //TODO both variables were private final in android documentation, why?
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+
+    double ax, ay, az;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,6 +80,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setNavigationItemSelectedListener(this);
         navigationView.setCheckedItem(R.id.nav_home);
 
+        /*---------------- INT SENSORS ----------------------*/
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null){
+            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Log.i(LOG_TAG, "accelerometer not found found");
+        }
+
         /*-------------- On Click Listener ------------------*/
         buttonBluetooth1.setOnClickListener(this::onClick);
         buttonBluetooth2.setOnClickListener(this::onClick);
@@ -92,8 +111,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume(){
         super.onResume();
+        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         navigationView.setCheckedItem(R.id.nav_home);
         Log.i(LOG_TAG, "onResume happens");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mSensorManager.unregisterListener(this);
     }
 
     @Override
@@ -141,5 +167,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void savingCancelled() {
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
+    }
+
+    /* SENSOR ACTIVITY MEHODS */
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
+            ax=event.values[0];
+            ay=event.values[1];
+            az=event.values[2];
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
     }
 }

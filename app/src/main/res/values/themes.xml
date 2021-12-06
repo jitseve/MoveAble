@@ -15,4 +15,13 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
+
+    <style name="Theme_Dialog" parent="@style/Base.Theme.AppCompat.Dialog">
+        ...
+        <item name="windowMinWidthMajor">80%</item>
+        <item name="windowMinWidthMinor">80%</item>
+        <item name="windowFixedHeightMinor">80%</item>
+        <item name="windowFixedHeightMajor">80%</item>
+        <item name="android:windowBackground">@drawable/background_bluetoothscan</item>
+    </style>
 </resources>

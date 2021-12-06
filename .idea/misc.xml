@@ -4,8 +4,12 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/drawable/background.xml" value="0.3828125" />
+        <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/drawable/background_bluetoothscan.xml" value="0.32685185185185184" />
+        <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/activity_bluetooth.xml" value="0.2046875" />
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/activity_main.xml" value="0.36666666666666664" />
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/activity_settings.xml" value="0.2727272727272727" />
+        <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/bluetooth_dialog.xml" value="0.1778115501519757" />
+        <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/bluetooth_item.xml" value="0.28396739130434784" />
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/dialog_save.xml" value="0.33" />
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/dropdown_item.xml" value="0.36666666666666664" />
         <entry key="..\:/jjves/Documents/SpT-KTH/Q2-MobileApplications/MoveAble/app/src/main/res/layout/menu_header.xml" value="0.36666666666666664" />

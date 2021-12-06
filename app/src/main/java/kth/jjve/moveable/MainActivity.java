@@ -47,8 +47,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     //TODO both variables were private final in android documentation, why?
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
+    private Sensor mGyroscope;
 
     double ax, ay, az;
+    float gx, gy, gz;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,11 +84,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         /*---------------- INT SENSORS ----------------------*/
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+
+        // Accelerometer
         if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null){
             mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             Log.i(LOG_TAG, "accelerometer found");
         } else {
-            Log.i(LOG_TAG, "accelerometer not found found");
+            Toast.makeText(getApplicationContext(), "No accelerometer found", Toast.LENGTH_SHORT).show();
+        }
+
+        // Accelerometer
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null){
+            mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Toast.makeText(getApplicationContext(), "No gyroscope found", Toast.LENGTH_SHORT).show();
         }
 
         /*-------------- On Click Listener ------------------*/
@@ -112,8 +124,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onResume(){
         super.onResume();
         mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         navigationView.setCheckedItem(R.id.nav_home);
-        Log.i(LOG_TAG, "onResume happens");
     }
 
     @Override
@@ -178,6 +190,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ay=event.values[1];
             az=event.values[2];
         }
+        //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
+
+        if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
+            gx=event.values[0];
+            gy=event.values[1];
+            gz=event.values[2];
+        }
+        Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
+        //TODO figure out how to save values: list, array, ... ?
     }
 
     @Override

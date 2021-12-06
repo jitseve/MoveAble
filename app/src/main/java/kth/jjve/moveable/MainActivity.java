@@ -49,8 +49,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
+    //TODO change so that it takes sampling fr from settings
+    double dT;
+
     double ax, ay, az;
-    float gx, gy, gz;
+    double roll_x, pitch_y, yaw_z;
+    double gx, gy, gz;
+    double rot_x = 0;
+    double rot_y = 0;
+    double rot_z = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,6 +117,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
             //Todo: insert method to start recording here
             Log.i(LOG_TAG, "Recording has started");
+
+            // record only when wanted
+            mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+
+            //TODO change this to actual sampling fr
+            dT = 13;
         });
         buttonSave.setOnClickListener(v -> {
             //Todo: add stuff to stop recording here
@@ -117,21 +131,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Toast.makeText(getApplicationContext(), "Recording has stopped", Toast.LENGTH_SHORT).show();
             openSaveDialog();
             Log.i(LOG_TAG, "Recording has stopped and is being saved");
+
+            mSensorManager.unregisterListener(this);
         });
     }
 
     @Override
     protected void onResume(){
         super.onResume();
-        mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         navigationView.setCheckedItem(R.id.nav_home);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mSensorManager.unregisterListener(this);
     }
 
     @Override
@@ -181,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
 
-    /* SENSOR ACTIVITY MEHODS */
+    /* SENSOR ACTIVITY METHODS */
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -189,15 +202,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ax=event.values[0];
             ay=event.values[1];
             az=event.values[2];
+
+            // rotation from acceleration data
+            roll_x = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
+            pitch_y = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
+            yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
         }
         //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
+        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", picth_y: " + pitch_y + ", yaw_z: " + yaw_z);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
             gx=event.values[0];
             gy=event.values[1];
             gz=event.values[2];
+
+            //rotation from gyroscope
+            rot_x = (rot_x + dT*gx);
+            rot_y = (rot_y + dT*gy);
+            rot_z = (rot_z + dT*gz);
         }
-        Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
+        //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
+        Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
         //TODO figure out how to save values: list, array, ... ?
     }
 
@@ -205,4 +230,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
+
 }

@@ -30,6 +30,10 @@ import android.widget.Toast;
 
 import com.google.android.material.navigation.NavigationView;
 
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+
+import kth.jjve.moveable.datastorage.Settings;
 import kth.jjve.moveable.dialogs.SaveDialog;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
@@ -42,6 +46,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
     /*------------------------- PREFS ---------------------*/
+    private Settings cSettings;
+    private int cFrequencyInteger;
+    private int frequencyInteger;
 
     /*---------------- INTERNAL SENSORS -------------------*/
     //TODO both variables were private final in android documentation, why?
@@ -49,7 +56,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
-    //TODO change so that it takes sampling fr from settings
     double dT;
 
     double ax, ay, az;
@@ -76,6 +82,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ImageView graph = findViewById(R.id.iv_main_datagraph);
 
         /*---------------------- Settings ----------------------*/
+        deserialise();
+        frequencyInteger = cSettings.getFrequencyInteger();
 
         /*--------------------- Tool bar --------------------*/
         setSupportActionBar(toolbar);
@@ -90,6 +98,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setCheckedItem(R.id.nav_home);
 
         /*---------------- INT SENSORS ----------------------*/
+        dT = 1/ Double.valueOf(frequencyInteger);
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         // Accelerometer
@@ -122,8 +131,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
 
-            //TODO change this to actual sampling fr
-            dT = 13;
         });
         buttonSave.setOnClickListener(v -> {
             //Todo: add stuff to stop recording here
@@ -209,7 +216,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
         }
         //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
-        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", picth_y: " + pitch_y + ", yaw_z: " + yaw_z);
+        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
             gx=event.values[0];
@@ -217,9 +224,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             gz=event.values[2];
 
             //rotation from gyroscope
-            rot_x = (rot_x + dT*gx);
-            rot_y = (rot_y + dT*gy);
-            rot_z = (rot_z + dT*gz);
+            //rot_x = (rot_x + dT*gx);
+            rot_x = rotFromGyroscope(gx, rot_x);
+            rot_y = rotFromGyroscope(gx, rot_y);
+            rot_z = rotFromGyroscope(gx, rot_z);
         }
         //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
         Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
@@ -229,6 +237,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    //TODO: add to filtering class or make it take all three rots at once
+    private double rotFromGyroscope(double gyro_value, double previous_rot_value) {
+        double rot = previous_rot_value + (dT * gyro_value);
+        return rot;
+    }
+
+
+    /*-------------- SERIALIZATION ----------------*/
+    private void deserialise() {
+        // Method to deserialise input file
+        try{
+            FileInputStream fin = openFileInput("settings.ser");
+
+            // Wrapping our stream
+            ObjectInputStream oin = new ObjectInputStream(fin);
+
+            // Reading in our object
+            cSettings = (Settings) oin.readObject();
+
+            // Closing our object stream which also closes the wrapped stream
+            oin.close();
+
+        } catch (Exception e) {
+            Log.i(LOG_TAG, "Error is " + e);
+            e.printStackTrace();
+        }
+
+        if (cSettings != null){
+            cFrequencyInteger = cSettings.getFrequencyInteger();
+        }
     }
 
 }

@@ -131,6 +131,7 @@ public class SettingsActivity extends AppCompatActivity implements NavigationVie
         if(cSettings != null){
             //Todo: get settings here
             int spinnerPosition = adapter.getPosition(cSettings.getFrequency());
+            int frequencyInteger = cSettings.getFrequencyInteger();
             spinner.setSelection(spinnerPosition);
         }
     }

@@ -8,6 +8,10 @@ Names: Jitse van Esch & Elisa Perini
 Date: 12.12.21
  */
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,7 +19,9 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.widget.Toolbar;
 
+import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
@@ -26,6 +32,7 @@ import android.widget.Toast;
 
 import com.google.android.material.navigation.NavigationView;
 
+import kth.jjve.moveable.dialogs.BluetoothActivity;
 import kth.jjve.moveable.dialogs.SaveDialog;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener {
@@ -33,11 +40,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
+    private ImageView bluetoothSettings;
+    private ImageView bluetoothDisabled;
+    private ImageView bluetoothEnabled;
 
     /*--------------------------- LOG -----------------------*/
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
     /*------------------------- PREFS ---------------------*/
+
+    /*------------------------- BLUETOOTH ---------------------*/
+    private BluetoothDevice mSelectedDevice;
 
 
     @Override
@@ -49,9 +62,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
         Toolbar toolbar = findViewById(R.id.main_toolbar);
-        ImageView buttonBluetooth1 = findViewById(R.id.iv_main_bluetoothSearch);
-        ImageView buttonBluetooth2 = findViewById(R.id.iv_main_bluetoothDisabled);
-        ImageView buttonBluetooth3 = findViewById(R.id.iv_main_bluetoothEnabled);
+        bluetoothSettings = findViewById(R.id.iv_main_bluetoothSearch);
+        bluetoothDisabled = findViewById(R.id.iv_main_bluetoothDisabled);
+        bluetoothEnabled = findViewById(R.id.iv_main_bluetoothEnabled);
         Button buttonRecord = findViewById(R.id.button_main_record);
         Button buttonSave = findViewById(R.id.button_main_stop);
         ImageView graph = findViewById(R.id.iv_main_datagraph);
@@ -71,9 +84,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setCheckedItem(R.id.nav_home);
 
         /*-------------- On Click Listener ------------------*/
-        buttonBluetooth1.setOnClickListener(this::onClick);
-        buttonBluetooth2.setOnClickListener(this::onClick);
-        buttonBluetooth3.setOnClickListener(this::onClick);
+        bluetoothSettings.setOnClickListener(this::onClick);
+        bluetoothDisabled.setOnClickListener(this::onClick);
+        bluetoothEnabled.setOnClickListener(this::onClick);
         buttonRecord.setOnClickListener(v -> {
             graph.setVisibility(View.VISIBLE);
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
@@ -116,13 +129,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-    public void openBluetoothDialog(){
-        Toast.makeText(getApplicationContext(), "Here will be a bluetooth selection", Toast.LENGTH_SHORT).show();
+    private void onClick(View v) {
+        Intent intent = new Intent(MainActivity.this, BluetoothActivity.class);
+        activityLauncher.launch(intent);
     }
 
-    private void onClick(View v) {
-        openBluetoothDialog();
-    }
+    ActivityResultLauncher<Intent> activityLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            new ActivityResultCallback<ActivityResult>() {
+                @Override
+                public void onActivityResult(ActivityResult result) {
+                    if (result.getResultCode() == 69){
+                        Intent intent = result.getData();
+                        if (intent != null){
+                            //Extract data
+                            mSelectedDevice = intent.getParcelableExtra(BluetoothActivity.SELECTED_DEVICE);
+                            bluetoothSettings.setVisibility(View.INVISIBLE);
+                            if (mSelectedDevice != null){
+                                bluetoothDisabled.setVisibility(View.INVISIBLE);
+                                bluetoothEnabled.setVisibility(View.VISIBLE);
+                            } else {
+                                bluetoothEnabled.setVisibility(View.INVISIBLE);
+                                bluetoothDisabled.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    } else {
+                        bluetoothSettings.setVisibility(View.INVISIBLE);
+                        bluetoothEnabled.setVisibility(View.INVISIBLE);
+                        bluetoothDisabled.setVisibility(View.VISIBLE);
+                    }
+                }
+            });
+
 
     /*||||||||||| SAVE DIALOG |||||||||||*/
 

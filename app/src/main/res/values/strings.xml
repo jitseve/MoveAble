@@ -9,6 +9,8 @@
     <string name="text_savedialog">Thank you for using our app. \nPlease choose your wanted filename to save the results</string>
     <string name="button_txt_main_start">Record</string>
     <string name="button_txt_main_stop">Save</string>
+    <string name="scanning_stopped">Scanning has stopped</string>
+    <string name="scanning_started">Scanning has started</string>
 
     <string-array name="frequencies">
         <item> 13 Hz</item>

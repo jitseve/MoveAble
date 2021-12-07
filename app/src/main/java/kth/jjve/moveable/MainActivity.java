@@ -183,7 +183,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Log.i(LOG_TAG, "Recording has started");          
         });
         buttonSave.setOnClickListener(v -> {
-            //Todo: add stuff to stop recording here
             stopData();
             tempAccView.setVisibility(View.INVISIBLE);
             tempTimeView.setVisibility(View.INVISIBLE);

@@ -83,12 +83,12 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
-    private double dT;
-    private double ax, ay, az;
-    private double roll_x, pitch_y, yaw_z;
-    private double[] pitchRollYaw = new double[3];
-    private double[] rotFromGyro = {0, 0, 0};
-    private double gx, gy, gz;
+    private float dT;
+    private long timestamp = 0;
+    private float ax, ay, az;
+    private float[] pitchRollYaw = new float[3];
+    private float[] rotFromGyro = {0, 0, 0};
+    private float gx, gy, gz;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -156,7 +156,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         navigationView.setCheckedItem(R.id.nav_home);
 
         /*---------------- INT SENSORS ----------------------*/
-        dT = 1/ Double.valueOf(frequencyInteger);
+        //dT = 1/ Double.valueOf(frequencyInteger);
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         // Accelerometer
@@ -167,7 +167,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
             Toast.makeText(getApplicationContext(), "No accelerometer found", Toast.LENGTH_SHORT).show();
         }
 
-        // Accelerometer
+        // Gyroscope
         if (mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null){
             mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
             Log.i(LOG_TAG, "accelerometer found");
@@ -267,6 +267,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         } else{
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+            timestamp = System.currentTimeMillis();
         }
     }
 
@@ -442,15 +443,19 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         tempIntRotAcc.setText("Rotation from accelerometer: " + pitchRollYaw[0] + ", " + pitchRollYaw[1] + ", " + pitchRollYaw[2]);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
-            gx=event.values[0];
-            gy=event.values[1];
-            gz=event.values[2];
+            gx= (float) Math.toDegrees(event.values[0]);
+            gy= (float) Math.toDegrees(event.values[1]);
+            gz= (float) Math.toDegrees(event.values[2]);
+
+            dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
+            timestamp = System.currentTimeMillis();
+            //Log.i(LOG_TAG, "dT = " + dT + "        timestamp = " + timestamp);
 
             //rotation from gyroscope
             rotFromGyro = DataProcess.rotFromGyroscope(gx, gy, gz, rotFromGyro[0], rotFromGyro[1], rotFromGyro[2], dT);
         }
         //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
-        Log.i(LOG_TAG, "Rotation:      rot_x: " + rotFromGyro[0] + ", rot_y: " + rotFromGyro[1] + ", rot_z: " + rotFromGyro[2]);
+        //Log.i(LOG_TAG, "Rotation:      rot_x: " + rotFromGyro[0] + ", rot_y: " + rotFromGyro[1] + ", rot_z: " + rotFromGyro[2]);
         tempIntRotGyro.setText("Rotation from gyroscope: " + rotFromGyro[0] + ", " + rotFromGyro[1] + ", " + rotFromGyro[2]);
         //Todo: figure out how to save values: list, array, ... ?
     }
@@ -460,12 +465,6 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         // need to overwrite, when implement sensor stuff
         Toast.makeText(getApplicationContext(), "Sensor accuracy changed", Toast.LENGTH_SHORT).show();
         // Todo: check if we need to add something here if accuracy has changed
-    }
-
-    //TODO: add to filtering class or make it take all three rots at once
-    private double rotFromGyroscope(double gyro_value, double previous_rot_value) {
-        double rot = previous_rot_value + (dT * gyro_value);
-        return rot;
     }
 
 

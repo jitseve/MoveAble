@@ -6,28 +6,35 @@ Jitse van Esch & Elisa Perini
  */
 package kth.jjve.moveable.utils;
 
+import android.util.Log;
+
+import kth.jjve.moveable.MainActivity;
+
 public class DataProcess {
 
-    public static double[] rotFromAcc;
+    /*--------------------------- LOG -----------------------*/
+    private static final String LOG_TAG = DataProcess.class.getSimpleName();
+
     private double filtered_value_EMWA;
     private double filtered_value_complimentary;
 
     //TODO check for recursive implementation?
     //TODO methods public or private
 
-    public static double[] rotFromGyroscope(double gyro_value_x, double gyro_value_y, double gyro_value_z, double previous_rot_value_x, double previous_rot_value_y, double previous_rot_value_z, double dT) {
-        double[] rot = new double[3];
-        rot[0] = previous_rot_value_x + (dT * gyro_value_x);
-        rot[1] = previous_rot_value_y + (dT * gyro_value_y);
-        rot[2] = previous_rot_value_z + (dT * gyro_value_z);
+    public static float[] rotFromGyroscope(float gx, float gy, float gz, float previous_rot_value_x, float previous_rot_value_y, float previous_rot_value_z, float dT) {
+        float[] rot = new float[3];
+        rot[0] = previous_rot_value_x + (dT * gx);
+        Log.i(LOG_TAG, "rotx = " + ", previous_rot_value = " + previous_rot_value_x + ", dT = " + dT + ", gx = " + gx);
+        rot[1] = previous_rot_value_y + (dT * gy);
+        rot[2] = previous_rot_value_z + (dT * gz);
         return rot;
     }
 
-    public static double[] rotFromAcc(double ax, double ay, double az) {
-        double[] rot = new double[3];
-        rot[0] = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
-        rot[1] = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
-        rot[2] = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
+    public static float[] rotFromAcc(double ax, double ay, double az) {
+        float[] rot = new float[3];
+        rot[0] = (float) Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
+        rot[1] = (float) Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
+        rot[2] = (float) Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
         return rot;
     }
 

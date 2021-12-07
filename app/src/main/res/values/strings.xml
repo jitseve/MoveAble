@@ -12,6 +12,11 @@
     <string name="scanning_stopped">Scanning has stopped</string>
     <string name="scanning_started">Scanning has started</string>
 
+    <string name="uuidMS2.0Service">34802252-7185-4d5d-b431-630e7050e8f0</string>
+    <string name="uuidMS2.0CommandChar">34800001-7185-4d5d-b431-630e7050e8f0</string>
+    <string name="uuidMS2.0DataChar">34800002-7185-4d5d-b431-630e7050e8f0</string>
+    <string name="uuidClientCharConfig">00002902-0000-1000-8000-00805f9b34fb</string>
+
     <string-array name="frequencies">
         <item> 13 Hz</item>
         <item> 26 Hz</item>

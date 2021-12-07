@@ -106,6 +106,28 @@
             app:layout_constraintTop_toBottomOf="@+id/main_toolbar"
             app:srcCompat="@drawable/underconstruction" />
 
+        <TextView
+            android:id="@+id/temp_tv_main_Time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="Time"
+            android:visibility="invisible"
+            app:layout_constraintEnd_toEndOf="@+id/iv_main_datagraph"
+            app:layout_constraintHorizontal_bias="0.497"
+            app:layout_constraintStart_toStartOf="@+id/iv_main_datagraph"
+            app:layout_constraintTop_toTopOf="@+id/iv_main_datagraph" />
+
+        <TextView
+            android:id="@+id/temp_tv_main_Acc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="acc"
+            android:visibility="invisible"
+            app:layout_constraintEnd_toEndOf="@+id/temp_tv_main_Time"
+            app:layout_constraintStart_toStartOf="@+id/temp_tv_main_Time"
+            app:layout_constraintTop_toBottomOf="@+id/temp_tv_main_Time" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

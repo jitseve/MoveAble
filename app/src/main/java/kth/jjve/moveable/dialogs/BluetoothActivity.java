@@ -46,7 +46,7 @@ public class BluetoothActivity extends AppCompatActivity {
 
     private BluetoothAdapter mBTadapter;
     private boolean mScanning;
-    private Handler mHandler;
+    private Handler bHandler;
 
     private TextView ScanInfo;
 
@@ -62,7 +62,7 @@ public class BluetoothActivity extends AppCompatActivity {
         setContentView(R.layout.activity_bluetooth);
 
         mDeviceList = new ArrayList<>();
-        mHandler = new Handler();
+        bHandler = new Handler();
 
         RecyclerView rv = findViewById(R.id.rv_bluetooth_devices);
         LinearLayoutManager lm = new LinearLayoutManager(this);
@@ -131,7 +131,7 @@ public class BluetoothActivity extends AppCompatActivity {
         final BluetoothLeScanner scanner = mBTadapter.getBluetoothLeScanner();
         if (enable) {
             if (!mScanning){
-                mHandler.postDelayed(() -> {
+                bHandler.postDelayed(() -> {
                     if (mScanning){
                         mScanning = false;
                         scanner.stopScan(mScanCallback);
@@ -158,7 +158,7 @@ public class BluetoothActivity extends AppCompatActivity {
             final BluetoothDevice device = result.getDevice();
             final String name = device.getName();
 
-            mHandler.post(() -> {
+            bHandler.post(() -> {
                 if (name != null
                 && name.contains(MOVESENSE)
                 && !mDeviceList.contains(device)){

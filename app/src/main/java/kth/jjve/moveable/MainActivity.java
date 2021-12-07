@@ -10,6 +10,8 @@ Date: 12.12.21
 
 import static kth.jjve.moveable.utilities.VisibilityChanger.setViewVisibility;
 import kth.jjve.moveable.utilities.TypeConverter;
+import kth.jjve.moveable.dialogs.BluetoothActivity;
+import kth.jjve.moveable.dialogs.SaveDialog;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
@@ -46,9 +48,6 @@ import com.google.android.material.navigation.NavigationView;
 import java.util.List;
 import java.util.UUID;
 
-import kth.jjve.moveable.dialogs.BluetoothActivity;
-import kth.jjve.moveable.dialogs.SaveDialog;
-
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener {
 
     /*--------------------------- VIEW ----------------------*/
@@ -67,10 +66,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
 
     /*------------------------- BLUETOOTH ---------------------*/
-    private BluetoothDevice mSelectedDevice;
+    private BluetoothDevice mSelectedDevice = null;
     private boolean mBluetoothConnected;
     private final byte MOVESENSE_REQ = 1, MOVESENSE_RES = 2, REQUEST_ID = 99;
-    private BluetoothGatt mBluetoothGatt;
+    private BluetoothGatt mBluetoothGatt = null;
 
 //    public final UUID MOVESENSE_20_SERVICE = UUID.fromString(getResources().getString(R.string.uuidMS2_0Service));
 //    public final UUID MOVESENSE_20_COMMAND_CHAR = UUID.fromString(getResources().getString(R.string.uuidMS2_0CommandChar));
@@ -88,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     /*----------------------- HANDLER -----------------------*/
-    private Handler mHandler;
+    public Handler mHandler;
 
 
 
@@ -137,11 +136,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         buttonSave.setOnClickListener(v -> {
             //Todo: add stuff to stop recording here
             stopData();
+            tempAccView.setVisibility(View.INVISIBLE);
+            tempTimeView.setVisibility(View.INVISIBLE);
             graph.setVisibility(View.INVISIBLE);
             Toast.makeText(getApplicationContext(), "Recording has stopped", Toast.LENGTH_SHORT).show();
             openSaveDialog();
             Log.i(LOG_TAG, "Recording has stopped and is being saved");
         });
+
+        mHandler = new Handler();
     }
 
     @Override
@@ -203,7 +206,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void acquireData(){
         if (mBluetoothConnected){
-            mBluetoothGatt = mSelectedDevice.connectGatt(this, false, mBtGattCallback);
+            if (mSelectedDevice != null){
+                mBluetoothGatt =
+                        mSelectedDevice.connectGatt(this, false, mBtGattCallback);
+            }
         } else{
             //Todo: method for internal sensor
         }
@@ -214,6 +220,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mBluetoothGatt.disconnect();
             try{
                 mBluetoothGatt.close();
+                Log.i(LOG_TAG, "bluetooth gatt closed");
             }catch (Exception e){
                 Log.i(LOG_TAG, "Exception is " + e);
                 e.printStackTrace();
@@ -229,11 +236,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 mBluetoothGatt = gatt;
                 mHandler.post(() -> setViewVisibility(bluetoothEnabled, bluetoothDisabled, bluetoothSettings));
                 gatt.discoverServices();
+                Log.i(LOG_TAG, "state connected");
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED){
                 mBluetoothGatt = null;
                 mHandler.post(() -> setViewVisibility(bluetoothDisabled, bluetoothEnabled, bluetoothSettings));
+                Log.i(LOG_TAG, "state disconnected");
             }
-
         }
 
         @Override

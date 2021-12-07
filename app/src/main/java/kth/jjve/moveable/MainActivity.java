@@ -134,7 +134,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         /*---------------------- Settings ----------------------*/
         deserialise();
+        if (cSettings == null){
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        }
         frequencyInteger = cSettings.getFrequencyInteger();
+
 
         /*--------------------- Tool bar --------------------*/
         setSupportActionBar(toolbar);

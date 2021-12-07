@@ -12,6 +12,7 @@ import static kth.jjve.moveable.utilities.VisibilityChanger.setViewVisibility;
 import kth.jjve.moveable.utilities.TypeConverter;
 import kth.jjve.moveable.dialogs.BluetoothActivity;
 import kth.jjve.moveable.dialogs.SaveDialog;
+import kth.jjve.moveable.datastorage.Settings;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
@@ -22,6 +23,10 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -45,10 +50,13 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 
+
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 import java.util.List;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
 
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
@@ -63,7 +71,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
     /*------------------------- PREFS ---------------------*/
+    private Settings cSettings;
+    private int cFrequencyInteger;
+    private int frequencyInteger;
     private String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
+
+    /*---------------- INTERNAL SENSORS -------------------*/
+    //TODO both variables were private final in android documentation, why?
+    private SensorManager mSensorManager;
+    private Sensor mAccelerometer;
+    private Sensor mGyroscope;
+
+    private double dT;
+    private double ax, ay, az;
+    private double roll_x, pitch_y, yaw_z;
+    private double gx, gy, gz;
+    private double rot_x = 0;
+    private double rot_y = 0;
+    private double rot_z = 0;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -89,9 +114,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*----------------------- HANDLER -----------------------*/
     public Handler mHandler;
 
-
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -111,6 +133,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         tempAccView = findViewById(R.id.temp_tv_main_Acc);
 
         /*---------------------- Settings ----------------------*/
+        deserialise();
+        frequencyInteger = cSettings.getFrequencyInteger();
 
         /*--------------------- Tool bar --------------------*/
         setSupportActionBar(toolbar);
@@ -124,6 +148,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setNavigationItemSelectedListener(this);
         navigationView.setCheckedItem(R.id.nav_home);
 
+        /*---------------- INT SENSORS ----------------------*/
+        dT = 1/ Double.valueOf(frequencyInteger);
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+
+        // Accelerometer
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null){
+            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Toast.makeText(getApplicationContext(), "No accelerometer found", Toast.LENGTH_SHORT).show();
+        }
+
+        // Accelerometer
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null){
+            mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Toast.makeText(getApplicationContext(), "No gyroscope found", Toast.LENGTH_SHORT).show();
+        }
+
         /*-------------- On Click Listener ------------------*/
         bluetoothSettings.setOnClickListener(this::onClick);
         bluetoothDisabled.setOnClickListener(this::onClick);
@@ -131,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         buttonRecord.setOnClickListener(v -> {
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
             acquireData();
-            Log.i(LOG_TAG, "Recording has started");
+            Log.i(LOG_TAG, "Recording has started");          
         });
         buttonSave.setOnClickListener(v -> {
             //Todo: add stuff to stop recording here
@@ -151,7 +195,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onResume(){
         super.onResume();
         navigationView.setCheckedItem(R.id.nav_home);
-        Log.i(LOG_TAG, "onResume happens");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
     }
 
     @Override
@@ -211,11 +259,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         mSelectedDevice.connectGatt(this, false, mBtGattCallback);
             }
         } else{
-            //Todo: method for internal sensor
+            mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+            mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
         }
     }
 
     private void stopData(){
+      if (mBluetoothConnected){
         if(mBluetoothGatt != null){
             mBluetoothGatt.disconnect();
             try{
@@ -226,6 +276,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 e.printStackTrace();
             }
         }
+      }else{     
+          mSensorManager.unregisterListener(this);
+      }
     }
 
     /*||||||||||| BLUETOOTH STUFF |||||||||||*/
@@ -364,4 +417,75 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void savingCancelled() {
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
+
+        /*||||||||||| SENSOR ACITIVY |||||||||||*/
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
+            ax=event.values[0];
+            ay=event.values[1];
+            az=event.values[2];
+
+            // rotation from acceleration data
+            roll_x = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
+            pitch_y = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
+            yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
+        }
+        //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
+        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
+
+        if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
+            gx=event.values[0];
+            gy=event.values[1];
+            gz=event.values[2];
+
+            //rotation from gyroscope
+            rot_x = rotFromGyroscope(gx, rot_x);
+            rot_y = rotFromGyroscope(gx, rot_y);
+            rot_z = rotFromGyroscope(gx, rot_z);
+        }
+        //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
+        Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
+        //Todo: figure out how to save values: list, array, ... ?
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // need to overwrite, when implement sensor stuff
+        // Todo: check if we need to add something here if accuracy has changed
+    }
+
+    //TODO: add to filtering class or make it take all three rots at once
+    private double rotFromGyroscope(double gyro_value, double previous_rot_value) {
+        double rot = previous_rot_value + (dT * gyro_value);
+        return rot;
+    }
+
+
+    /*||||||||||| SERIALISATION |||||||||||*/
+    private void deserialise() {
+        // Method to deserialise input file
+        try{
+            FileInputStream fin = openFileInput("settings.ser");
+
+            // Wrapping our stream
+            ObjectInputStream oin = new ObjectInputStream(fin);
+
+            // Reading in our object
+            cSettings = (Settings) oin.readObject();
+
+            // Closing our object stream which also closes the wrapped stream
+            oin.close();
+
+        } catch (Exception e) {
+            Log.i(LOG_TAG, "Error is " + e);
+            e.printStackTrace();
+        }
+
+        if (cSettings != null){
+            cFrequencyInteger = cSettings.getFrequencyInteger();
+        }
+    }
+
 }

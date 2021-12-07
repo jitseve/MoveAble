@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="kth.jjve.moveable">
 
+    <!-- needed for sampling frequency above 200Hz -->
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"

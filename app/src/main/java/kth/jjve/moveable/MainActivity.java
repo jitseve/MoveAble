@@ -13,6 +13,7 @@ import kth.jjve.moveable.utilities.TypeConverter;
 import kth.jjve.moveable.dialogs.BluetoothActivity;
 import kth.jjve.moveable.dialogs.SaveDialog;
 import kth.jjve.moveable.datastorage.Settings;
+import kth.jjve.moveable.utils.DataProcess;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
@@ -56,7 +57,7 @@ import java.io.ObjectInputStream;
 import java.util.List;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
+public class MainActivity<rotFromGyro> extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
 
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
@@ -85,10 +86,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private double dT;
     private double ax, ay, az;
     private double roll_x, pitch_y, yaw_z;
+    private double[] pitchRollYaw = new double[3];
+    private double[] rotFromGyro = {0, 0, 0};
     private double gx, gy, gz;
-    private double rot_x = 0;
-    private double rot_y = 0;
-    private double rot_z = 0;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -434,14 +434,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             az=event.values[2];
 
             // rotation from acceleration data
-            roll_x = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
-            pitch_y = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
-            yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
+            pitchRollYaw = DataProcess.rotFromAcc(ax, ay, az);
 
         }
         //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
         //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
-        tempIntRotAcc.setText("Rotation from accelerometer: " + roll_x + ", " + pitch_y + ", " + yaw_z);
+        tempIntRotAcc.setText("Rotation from accelerometer: " + pitchRollYaw[0] + ", " + pitchRollYaw[1] + ", " + pitchRollYaw[2]);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
             gx=event.values[0];
@@ -449,19 +447,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             gz=event.values[2];
 
             //rotation from gyroscope
-            rot_x = rotFromGyroscope(gx, rot_x);
-            rot_y = rotFromGyroscope(gx, rot_y);
-            rot_z = rotFromGyroscope(gx, rot_z);
+            rotFromGyro = DataProcess.rotFromGyroscope(gx, gy, gz, rotFromGyro[0], rotFromGyro[1], rotFromGyro[2], dT);
         }
         //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
-        Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
-        tempIntRotGyro.setText("Rotation from gyroscope: " + rot_x + ", " + rot_y + ", " + rot_z);
+        Log.i(LOG_TAG, "Rotation:      rot_x: " + rotFromGyro[0] + ", rot_y: " + rotFromGyro[1] + ", rot_z: " + rotFromGyro[2]);
+        tempIntRotGyro.setText("Rotation from gyroscope: " + rotFromGyro[0] + ", " + rotFromGyro[1] + ", " + rotFromGyro[2]);
         //Todo: figure out how to save values: list, array, ... ?
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // need to overwrite, when implement sensor stuff
+        Toast.makeText(getApplicationContext(), "Sensor accuracy changed", Toast.LENGTH_SHORT).show();
         // Todo: check if we need to add something here if accuracy has changed
     }
 

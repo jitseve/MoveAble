@@ -89,6 +89,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     private float[] pitchRollYaw = new float[3];
     private float[] rotFromGyro = {0, 0, 0};
     private float gx, gy, gz;
+    private float complimentary_x = 0;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -267,6 +268,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         } else{
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+            //timestamp for 1st value of gyroscope rotation (init)
             timestamp = System.currentTimeMillis();
         }
     }
@@ -436,11 +438,9 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
 
             // rotation from acceleration data
             pitchRollYaw = DataProcess.rotFromAcc(ax, ay, az);
-
         }
         //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
-        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
-        tempIntRotAcc.setText("Rotation from accelerometer: " + pitchRollYaw[0] + ", " + pitchRollYaw[1] + ", " + pitchRollYaw[2]);
+        tempIntRotAcc.setText("Rotation from accelerometer: " + Math.round(pitchRollYaw[0]) + ", " + Math.round(pitchRollYaw[1]) + ", " + Math.round(pitchRollYaw[2]));
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
             gx= (float) Math.toDegrees(event.values[0]);
@@ -448,15 +448,17 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
             gz= (float) Math.toDegrees(event.values[2]);
 
             dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
-            timestamp = System.currentTimeMillis();
-            //Log.i(LOG_TAG, "dT = " + dT + "        timestamp = " + timestamp);
+            timestamp = System.currentTimeMillis(); // for storing old value
 
             //rotation from gyroscope
             rotFromGyro = DataProcess.rotFromGyroscope(gx, gy, gz, rotFromGyro[0], rotFromGyro[1], rotFromGyro[2], dT);
         }
         //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
         //Log.i(LOG_TAG, "Rotation:      rot_x: " + rotFromGyro[0] + ", rot_y: " + rotFromGyro[1] + ", rot_z: " + rotFromGyro[2]);
-        tempIntRotGyro.setText("Rotation from gyroscope: " + rotFromGyro[0] + ", " + rotFromGyro[1] + ", " + rotFromGyro[2]);
+        tempIntRotGyro.setText("Rotation from gyroscope: " + Math.round(rotFromGyro[0]) + ", " + Math.round(rotFromGyro[1]) + ", " + Math.round(rotFromGyro[2]));
+
+        complimentary_x = DataProcess.complimentaryFilter(rotFromGyro[0], pitchRollYaw[0], (float) 0.5, complimentary_x, dT);
+        Log.i(LOG_TAG, "complimentary_x = " + complimentary_x);
         //Todo: figure out how to save values: list, array, ... ?
     }
 

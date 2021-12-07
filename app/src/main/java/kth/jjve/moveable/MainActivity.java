@@ -23,6 +23,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -48,11 +49,17 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.google.android.material.navigation.NavigationView;
 
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -64,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
+    private LineChart lineChart;
 
     private TextView tempTimeView, tempAccView;
 
@@ -114,6 +122,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*----------------------- HANDLER -----------------------*/
     public Handler mHandler;
 
+    /*----------------------- DATA ----------------------*/
+    private ArrayList<String> xData;
+    private ArrayList<Entry> yData;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -131,6 +143,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ImageView graph = findViewById(R.id.iv_main_datagraph);
         tempTimeView = findViewById(R.id.temp_tv_main_Time); //Todo: when graph is done, these can disappear
         tempAccView = findViewById(R.id.temp_tv_main_Acc);
+        lineChart = findViewById(R.id.main_linechart);
 
         /*---------------------- Settings ----------------------*/
         deserialise();
@@ -154,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setCheckedItem(R.id.nav_home);
 
         /*---------------- INT SENSORS ----------------------*/
-        dT = 1/ Double.valueOf(frequencyInteger);
+        dT = 1/ (double) frequencyInteger;
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         // Accelerometer
@@ -373,6 +386,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     // Todo: save the list (expanding)
                     // Todo: save the data to a list with a fixed length to display in graph
 
+                    displayGraph();
+
                     String accStr = "" + accX + " " + accY + " " + accZ;
                     Log.i("acc data", "" + time + " " + accStr);
 
@@ -462,8 +477,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     //TODO: add to filtering class or make it take all three rots at once
     private double rotFromGyroscope(double gyro_value, double previous_rot_value) {
-        double rot = previous_rot_value + (dT * gyro_value);
-        return rot;
+        return previous_rot_value + (dT * gyro_value);
     }
 
 
@@ -490,6 +504,41 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
         }
+    }
+
+    /*||||||||||| DISPLAY GRAPH |||||||||||*/
+    private void displayGraph(){
+        if (xData == null){
+            xData = new ArrayList<>();
+        }
+        if (yData == null){
+            yData = new ArrayList<>();
+        }
+
+        // This is all example stuff from here
+        double x = 0;
+        int numDataPoints = 1000;
+        for(int i=0;i<numDataPoints;i++){
+            float sinFunction = Float.parseFloat(String.valueOf(Math.sin(x))); //y values must be of float to put it into entry
+            x = x + 0.1;
+            yData.add(new Entry(sinFunction,i));
+            xData.add(i, String.valueOf(x));
+        }
+
+        ArrayList<ILineDataSet> lineDataSet = new ArrayList<>();
+
+        LineDataSet lineDataSet1 = new LineDataSet(yData, "yData");
+        lineDataSet1.setDrawCircles(false);
+        lineDataSet1.setColor(Color.BLUE);
+
+        lineDataSet.add(lineDataSet1);
+
+        lineChart.setData(new LineData(lineDataSet));
+
+        lineChart.setVisibleXRangeMaximum(65f);
+
+        lineChart.setVisibility(View.VISIBLE);
+
     }
 
 }

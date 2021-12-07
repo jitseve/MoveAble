@@ -128,6 +128,25 @@
             app:layout_constraintStart_toStartOf="@+id/temp_tv_main_Time"
             app:layout_constraintTop_toBottomOf="@+id/temp_tv_main_Time" />
 
+        <TextView
+            android:id="@+id/temp_int_rot_from_acc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:layout_editor_absoluteX="175dp"
+            tools:layout_editor_absoluteY="272dp"
+            app:layout_constraintEnd_toEndOf="@+id/temp_tv_main_Acc"
+            app:layout_constraintStart_toStartOf="@+id/temp_tv_main_Acc"
+            app:layout_constraintTop_toBottomOf="@+id/temp_tv_main_Acc"/>
+
+        <TextView
+            android:id="@+id/temp_int_rot_from_gyro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@+id/temp_int_rot_from_acc"
+            app:layout_constraintEnd_toEndOf="@+id/temp_int_rot_from_acc"
+            app:layout_constraintStart_toStartOf="@+id/temp_int_rot_from_acc"
+            tools:layout_editor_absoluteX="181dp" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

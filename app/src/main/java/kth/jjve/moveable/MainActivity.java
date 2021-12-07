@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
 
-    private TextView tempTimeView, tempAccView;
+    private TextView tempTimeView, tempAccView, tempIntRotAcc, tempIntRotGyro;
 
     /*--------------------------- LOG -----------------------*/
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
@@ -131,6 +131,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ImageView graph = findViewById(R.id.iv_main_datagraph);
         tempTimeView = findViewById(R.id.temp_tv_main_Time); //Todo: when graph is done, these can disappear
         tempAccView = findViewById(R.id.temp_tv_main_Acc);
+        tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
+        tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
 
         /*---------------------- Settings ----------------------*/
         deserialise();
@@ -435,9 +437,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             roll_x = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
             pitch_y = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
             yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
+
         }
         //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
         //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
+        tempIntRotAcc.setText("Rotation from accelerometer: " + roll_x + ", " + pitch_y + ", " + yaw_z);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
             gx=event.values[0];
@@ -451,6 +455,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
         Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
+        tempIntRotGyro.setText("Rotation from gyroscope: " + rot_x + ", " + rot_y + ", " + rot_z);
         //Todo: figure out how to save values: list, array, ... ?
     }
 

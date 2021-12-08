@@ -1,4 +1,9 @@
 package kth.jjve.moveable.datastorage;
+/*
+Class to store the acquired data in two lists
+List one has a fixed length, to display in the graph (bluetooth)
+List two saves all the data (length is growing).
+ */
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,9 +17,8 @@ public class DataStorage {
     Integer firstX;
     boolean firstRun = true;
 
-
     public DataStorage() {
-        // Class to save the bluetooth data
+        // Initialise the class
         xDataGraph = new ArrayList<>(Collections.nCopies(100, 0));
         yDataGraph = new ArrayList<>(Collections.nCopies(100, (float) 0));
 
@@ -23,11 +27,12 @@ public class DataStorage {
     }
 
     public void writeData(int x, float y) {
+        // Method to write the data into the lists
         if (firstRun) {
             firstX = x; // save the first timestamp
             firstRun = false;
         }
-        xDataGraph.add(x - firstX);               // add x to the end of the list
+        xDataGraph.add(x - firstX);      // add x to the end of the list
         xDataGraph.remove(0);      // remove first item of the list
         yDataGraph.add(y);
         yDataGraph.remove(0);
@@ -49,5 +54,9 @@ public class DataStorage {
     }
 
     public List<Float> getYData(){return yData;}
+
+    public Integer getRunningTime(){
+        return xDataGraph.get(99);
+    }
 }
 

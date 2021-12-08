@@ -1,4 +1,7 @@
 package kth.jjve.moveable.utilities;
+/*
+Class to display the linechart on the ui
+ */
 
 import android.graphics.Color;
 import android.view.View;
@@ -16,6 +19,7 @@ import java.util.List;
 public class DisplayGraph {
 
     public static void displayTheGraph(List<Integer> xData, List<Float> yData, LineChart lc){
+        //Todo: see if we can make a separate data update function and a plot function (check notifyDataSetChanged())
 
         List<Entry> entries = new ArrayList<>();
         for (int i=0; i<xData.size(); i++){

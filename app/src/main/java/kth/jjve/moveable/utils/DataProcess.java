@@ -22,7 +22,6 @@ public class DataProcess {
         // method to get the rotation (in degrees) from the raw values provided by the gyroscope
         float[] rot = new float[3];
         rot[0] = previous_rot_value_x + (dT * gx);
-        //Log.i(LOG_TAG, "rotx = " + ", previous_rot_value = " + previous_rot_value_x + ", dT = " + dT + ", gx = " + gx);
         rot[1] = previous_rot_value_y + (dT * gy);
         rot[2] = previous_rot_value_z + (dT * gz);
         return rot;
@@ -44,7 +43,7 @@ public class DataProcess {
     }
 
     public static float complimentaryFilter(float gyroValue, float accRotValue, float alpha, float previous_value, float dT) {
-        float filtered_value_complimentary =(alpha * previous_value) + (dT * gyroValue) + ((1 - alpha) * accRotValue);
+        float filtered_value_complimentary =alpha * (previous_value + (dT * gyroValue)) + (1 - alpha) * accRotValue;
         return filtered_value_complimentary;
     }
 

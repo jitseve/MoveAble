@@ -37,7 +37,7 @@ public class DataProcess {
         return rot;
     }
 
-    public float EMWA_filter(float value, float alpha, float previous_value) {
+    public static float EMWA_filter(float value, float alpha, float previous_value) {
         // method for exponential moving average filtering
         float filtered_value_EMWA =(alpha * previous_value + (1-alpha)*value);
         return filtered_value_EMWA;

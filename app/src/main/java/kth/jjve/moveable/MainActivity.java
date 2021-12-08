@@ -83,13 +83,13 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
+    // internal sensor variables, can probs be turned into local variables for some
     private float dT;
     private long timestamp = 0;
-    private float ax, ay, az;
     private float[] pitchRollYaw = new float[3];
     private float[] rotFromGyro = {0, 0, 0};
-    private float gx, gy, gz;
-    private float complimentary_x = 0;
+    private float[] complimentary_filtered_values = {0, 0, 0};
+    private float[] EWMA_filtered_values = {0,0,0};
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -432,20 +432,24 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
-            ax=event.values[0];
-            ay=event.values[1];
-            az=event.values[2];
+            float ax=event.values[0];
+            float ay=event.values[1];
+            float az=event.values[2];
 
             // rotation from acceleration data
             pitchRollYaw = DataProcess.rotFromAcc(ax, ay, az);
         }
-        //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
         tempIntRotAcc.setText("Rotation from accelerometer: " + Math.round(pitchRollYaw[0]) + ", " + Math.round(pitchRollYaw[1]) + ", " + Math.round(pitchRollYaw[2]));
 
+        EWMA_filtered_values[0] = DataProcess.EMWA_filter(pitchRollYaw[0], (float) 0.5, EWMA_filtered_values[0]);
+        EWMA_filtered_values[1] = DataProcess.EMWA_filter(pitchRollYaw[1], (float) 0.5, EWMA_filtered_values[1]);
+        EWMA_filtered_values[2] = DataProcess.EMWA_filter(pitchRollYaw[2], (float) 0.5, EWMA_filtered_values[2]);
+        Log.i(LOG_TAG, "EMWA filter: " + EWMA_filtered_values[0] + ", " + EWMA_filtered_values[1] + ", " + EWMA_filtered_values[2]);
+
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
-            gx= (float) Math.toDegrees(event.values[0]);
-            gy= (float) Math.toDegrees(event.values[1]);
-            gz= (float) Math.toDegrees(event.values[2]);
+            float gx = (float) Math.toDegrees(event.values[0]);
+            float gy= (float) Math.toDegrees(event.values[1]);
+            float gz= (float) Math.toDegrees(event.values[2]);
 
             dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
             timestamp = System.currentTimeMillis(); // for storing old value
@@ -453,12 +457,14 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
             //rotation from gyroscope
             rotFromGyro = DataProcess.rotFromGyroscope(gx, gy, gz, rotFromGyro[0], rotFromGyro[1], rotFromGyro[2], dT);
         }
-        //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
-        //Log.i(LOG_TAG, "Rotation:      rot_x: " + rotFromGyro[0] + ", rot_y: " + rotFromGyro[1] + ", rot_z: " + rotFromGyro[2]);
+
         tempIntRotGyro.setText("Rotation from gyroscope: " + Math.round(rotFromGyro[0]) + ", " + Math.round(rotFromGyro[1]) + ", " + Math.round(rotFromGyro[2]));
 
-        complimentary_x = DataProcess.complimentaryFilter(rotFromGyro[0], pitchRollYaw[0], (float) 0.5, complimentary_x, dT);
-        Log.i(LOG_TAG, "complimentary_x = " + complimentary_x);
+        //Complimentary filter
+        complimentary_filtered_values[0] = DataProcess.complimentaryFilter(rotFromGyro[0], pitchRollYaw[0], (float) 0.5, complimentary_filtered_values[0], dT);
+        complimentary_filtered_values[1] = DataProcess.complimentaryFilter(rotFromGyro[1], pitchRollYaw[1], (float) 0.5, complimentary_filtered_values[1], dT);
+        complimentary_filtered_values[2] = DataProcess.complimentaryFilter(rotFromGyro[2], pitchRollYaw[2], (float) 0.5, complimentary_filtered_values[2], dT);
+        Log.i(LOG_TAG, "Complimentary filter: x = " + complimentary_filtered_values[0] + ", " + complimentary_filtered_values[1] + ", " + complimentary_filtered_values[2]);
         //Todo: figure out how to save values: list, array, ... ?
     }
 

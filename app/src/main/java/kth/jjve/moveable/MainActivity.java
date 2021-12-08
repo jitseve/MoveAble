@@ -9,10 +9,7 @@ Date: 12.12.21
  */
 
 import static kth.jjve.moveable.utilities.VisibilityChanger.setViewVisibility;
-import kth.jjve.moveable.utilities.TypeConverter;
-import kth.jjve.moveable.dialogs.BluetoothActivity;
-import kth.jjve.moveable.dialogs.SaveDialog;
-import kth.jjve.moveable.datastorage.Settings;
+import static kth.jjve.moveable.utilities.DisplayGraph.displayTheGraph;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
@@ -23,7 +20,6 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
-import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -51,17 +47,18 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.google.android.material.navigation.NavigationView;
-
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import kth.jjve.moveable.datastorage.Settings;
+import kth.jjve.moveable.dialogs.BluetoothActivity;
+import kth.jjve.moveable.dialogs.SaveDialog;
+import kth.jjve.moveable.utilities.TypeConverter;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
 
@@ -71,7 +68,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
-    private LineChart lineChart;
+    public LineChart lineChart;
 
     private TextView tempTimeView, tempAccView;
 
@@ -104,18 +101,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final byte MOVESENSE_REQ = 1, MOVESENSE_RES = 2, REQUEST_ID = 99;
     private BluetoothGatt mBluetoothGatt = null;
 
-//    public final UUID MOVESENSE_20_SERVICE = UUID.fromString(getResources().getString(R.string.uuidMS2_0Service));
-//    public final UUID MOVESENSE_20_COMMAND_CHAR = UUID.fromString(getResources().getString(R.string.uuidMS2_0CommandChar));
-//    public final UUID MOVESENSE_20_DATA_CHAR = UUID.fromString(getResources().getString(R.string.uuidMS2_0DataChar));
-//    public final UUID CLIENT_CHAR_CONFIG = UUID.fromString(getResources().getString(R.string.uuidClientCharConfig));
-
     public static final UUID MOVESENSE_20_SERVICE =
             UUID.fromString("34802252-7185-4d5d-b431-630e7050e8f0");
     public static final UUID MOVESENSE_20_COMMAND_CHAR =
             UUID.fromString("34800001-7185-4d5d-b431-630e7050e8f0");
     public static final UUID MOVESENSE_20_DATA_CHAR =
             UUID.fromString("34800002-7185-4d5d-b431-630e7050e8f0");
-    // UUID for the client characteristic, which is necessary for notifications
     public static final UUID CLIENT_CHAR_CONFIG =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
@@ -123,8 +114,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public Handler mHandler;
 
     /*----------------------- DATA ----------------------*/
-    private ArrayList<String> xData;
-    private ArrayList<Entry> yData;
+    private ArrayList<Double> xData;
+    private ArrayList<Double> yData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -270,6 +261,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             });
 
     private void acquireData(){
+        displayTheGraph(xData, yData, lineChart);
         if (mBluetoothConnected){
             if (mSelectedDevice != null){
                 mBluetoothGatt =
@@ -385,8 +377,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     // Todo: add filtered data to a list
                     // Todo: save the list (expanding)
                     // Todo: save the data to a list with a fixed length to display in graph
-
-                    displayGraph();
+                    // Todo: call displayGraph here
 
                     String accStr = "" + accX + " " + accY + " " + accZ;
                     Log.i("acc data", "" + time + " " + accStr);
@@ -506,39 +497,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    /*||||||||||| DISPLAY GRAPH |||||||||||*/
-    private void displayGraph(){
-        if (xData == null){
-            xData = new ArrayList<>();
-        }
-        if (yData == null){
-            yData = new ArrayList<>();
-        }
-
-        // This is all example stuff from here
-        double x = 0;
-        int numDataPoints = 1000;
-        for(int i=0;i<numDataPoints;i++){
-            float sinFunction = Float.parseFloat(String.valueOf(Math.sin(x))); //y values must be of float to put it into entry
-            x = x + 0.1;
-            yData.add(new Entry(sinFunction,i));
-            xData.add(i, String.valueOf(x));
-        }
-
-        ArrayList<ILineDataSet> lineDataSet = new ArrayList<>();
-
-        LineDataSet lineDataSet1 = new LineDataSet(yData, "yData");
-        lineDataSet1.setDrawCircles(false);
-        lineDataSet1.setColor(Color.BLUE);
-
-        lineDataSet.add(lineDataSet1);
-
-        lineChart.setData(new LineData(lineDataSet));
-
-        lineChart.setVisibleXRangeMaximum(65f);
-
-        lineChart.setVisibility(View.VISIBLE);
-
-    }
 
 }

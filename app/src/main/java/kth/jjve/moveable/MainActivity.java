@@ -46,15 +46,14 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.data.Entry;
 import com.google.android.material.navigation.NavigationView;
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import kth.jjve.moveable.datastorage.DataStorage;
 import kth.jjve.moveable.datastorage.Settings;
 import kth.jjve.moveable.dialogs.BluetoothActivity;
 import kth.jjve.moveable.dialogs.SaveDialog;
@@ -78,8 +77,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*------------------------- PREFS ---------------------*/
     private Settings cSettings;
     private int cFrequencyInteger;
-    private int frequencyInteger;
-    private String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
+    private final String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
 
     /*---------------- INTERNAL SENSORS -------------------*/
     //TODO both variables were private final in android documentation, why?
@@ -114,8 +112,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public Handler mHandler;
 
     /*----------------------- DATA ----------------------*/
-    private ArrayList<Double> xData;
-    private ArrayList<Double> yData;
+    DataStorage dataStorage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,12 +134,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         lineChart = findViewById(R.id.main_linechart);
 
         /*---------------------- Settings ----------------------*/
-        deserialise();
+        deserialize();
         if (cSettings == null){
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
         }
-        frequencyInteger = cSettings.getFrequencyInteger();
 
 
         /*--------------------- Tool bar --------------------*/
@@ -158,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navigationView.setCheckedItem(R.id.nav_home);
 
         /*---------------- INT SENSORS ----------------------*/
-        dT = 1/ (double) frequencyInteger;
+        dT = 1/ (double) cFrequencyInteger;
         mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         // Accelerometer
@@ -213,7 +209,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onStop() {
         super.onStop();
-        stopData();
+//        stopData();
     }
 
     @Override
@@ -261,8 +257,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             });
 
     private void acquireData(){
-        displayTheGraph(xData, yData, lineChart);
         if (mBluetoothConnected){
+            dataStorage = new DataStorage();
+            lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =
                         mSelectedDevice.connectGatt(this, false, mBtGattCallback);
@@ -277,6 +274,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
       if (mBluetoothConnected){
         if(mBluetoothGatt != null){
             mBluetoothGatt.disconnect();
+            lineChart.setVisibility(View.INVISIBLE);
             try{
                 mBluetoothGatt.close();
                 Log.i(LOG_TAG, "bluetooth gatt closed");
@@ -327,8 +325,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     byte[] command =
                             TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
                     commandChar.setValue(command);
-                    boolean wasSuccessfull = mBluetoothGatt.writeCharacteristic(commandChar);
-                    Log.i("writeCharacteristic", "was succesfull = " + wasSuccessfull);
+                    boolean wasSuccessful = mBluetoothGatt.writeCharacteristic(commandChar);
+                    Log.i("writeCharacteristic", "was successful = " + wasSuccessful);
                 } else {
                     Log.i(LOG_TAG, "service not found");
                 }
@@ -343,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     movesenseService.getCharacteristic(MOVESENSE_20_DATA_CHAR);
             boolean success = gatt.setCharacteristicNotification(dataCharacteristic, true);
             if (success) {
-                Log.i(LOG_TAG, "setCharactNotification success");
+                Log.i(LOG_TAG, "setCharacterNotification success");
                 BluetoothGattDescriptor descriptor =
                         dataCharacteristic.getDescriptor(CLIENT_CHAR_CONFIG);
                 descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
@@ -363,33 +361,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (MOVESENSE_20_DATA_CHAR.equals(characteristic.getUuid())) {
                 byte[] data = characteristic.getValue();
                 if (data[0] == MOVESENSE_RES && data[1] == REQUEST_ID) {
-                    // NB! use length of the array to determine the number of values in this
-                    // "packet", the number of values in the packet depends on the frequency set(!)
-                    int len = data.length;
-
                     // parse and interpret the data, ...
                     int time = TypeConverter.fourBytesToInt(data, 2);
                     float accX = TypeConverter.fourBytesToFloat(data, 6);
                     float accY = TypeConverter.fourBytesToFloat(data, 10);
                     float accZ = TypeConverter.fourBytesToFloat(data, 14);
 
+                    dataStorage.writeData(time, accX);
+                    displayTheGraph(dataStorage.getXGraphdata(), dataStorage.getYGraphdata(), lineChart);
+
                     // Todo: filter the data (one filter function)
+                    // Todo: stop the data after 10 seconds
                     // Todo: add filtered data to a list
                     // Todo: save the list (expanding)
-                    // Todo: save the data to a list with a fixed length to display in graph
-                    // Todo: call displayGraph here
 
                     String accStr = "" + accX + " " + accY + " " + accZ;
                     Log.i("acc data", "" + time + " " + accStr);
-
-                    @SuppressLint("DefaultLocale") final String viewDataStr = String.format("%.2f, %.2f, %.2f", accX, accY, accZ);
-                    mHandler.post(() -> {
-                        String timeString = time + " ms";
-                        tempTimeView.setText(timeString);
-                        tempTimeView.setVisibility(View.VISIBLE);
-                        tempAccView.setText(viewDataStr);
-                        tempAccView.setVisibility(View.VISIBLE);
-                    });
                 }
             }
         }
@@ -428,7 +415,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
 
-        /*||||||||||| SENSOR ACITIVY |||||||||||*/
+        /*||||||||||| SENSOR ACTIVITY |||||||||||*/
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -473,8 +460,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
 
     /*||||||||||| SERIALISATION |||||||||||*/
-    private void deserialise() {
-        // Method to deserialise input file
+    private void deserialize() {
+        // Method to deserialize input file
         try{
             FileInputStream fin = openFileInput("settings.ser");
 

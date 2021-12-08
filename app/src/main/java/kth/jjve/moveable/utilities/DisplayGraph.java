@@ -9,26 +9,22 @@ import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
-import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class DisplayGraph {
 
-    public static void displayTheGraph(ArrayList<Double> xData, ArrayList<Double> yData, LineChart lc){
+    public static void displayTheGraph(List<Integer> xData, List<Float> yData, LineChart lc){
 
-        // This is all example stuff from here
-        double x = 0;
-        int numDataPoints = 1000;
         List<Entry> entries = new ArrayList<>();
-        for(int i=0; i<numDataPoints; i++){
-            float sinFunction = Float.parseFloat(String.valueOf(Math.sin(x)));
-            entries.add(new Entry((float) x, sinFunction));
-            x = x + 0.1;
+        for (int i=0; i<xData.size(); i++){
+            float x = xData.get(i);
+            float y = yData.get(i);
+            entries.add(new Entry(x, y));
         }
 
-        LineDataSet dataSet = new LineDataSet(entries, "sin function (trial)");
+        LineDataSet dataSet = new LineDataSet(entries, "Acceleration X");
         dataSet.setColor(Color.BLUE);
         dataSet.setDrawCircles(false);
 
@@ -39,21 +35,12 @@ public class DisplayGraph {
 
         XAxis xAxis = lc.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setAxisMinimum(0);
-        xAxis.setAxisMaximum((float) 6.7);
 
-        lc.setVisibility(View.VISIBLE);
         lc.setData(lineData);
         lc.setDescription(description); // Sets a description in the right bottom corner
         lc.setDrawGridBackground(true);
         lc.invalidate(); //Refreshes the graph
         lc.notifyDataSetChanged(); //Needed when data is added dynamically (as it will be)
-
-
-        ArrayList<ILineDataSet> lineDataSet = new ArrayList<>();
-
-
-        lc.setVisibility(View.VISIBLE);
 
     }
 }

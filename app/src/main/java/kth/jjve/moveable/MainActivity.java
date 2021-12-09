@@ -83,13 +83,14 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
+    /*---------------- DATA PROCESS -------------------*/
+    private DataProcess cDataProcess;
+
     // internal sensor variables, can probs be turned into local variables for some
     private float dT;
     private long timestamp = 0;
-    private float[] pitchRollYaw = new float[3];
-    private float[] rotFromGyro = {0, 0, 0};
-    private float[] complimentary_filtered_values = {0, 0, 0};
-    private float[] EWMA_filtered_values = {0,0,0};
+    private float complimentary_filtered_value;
+    private float EWMA_filtered_value;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -427,46 +428,31 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
 
-        /*||||||||||| SENSOR ACITIVY |||||||||||*/
+        /*||||||||||| SENSOR ACTIVITY |||||||||||*/
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        if (cDataProcess == null) cDataProcess = new DataProcess();
         if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
-            float ax=event.values[0];
-            float ay=event.values[1];
-            float az=event.values[2];
-
-            // rotation from acceleration data
-            pitchRollYaw = DataProcess.rotFromAcc(ax, ay, az);
+            cDataProcess.setAcceleration(event.values[0], event.values[1], event.values[2]);
+            cDataProcess.rotFromAcc();
+            EWMA_filtered_value = cDataProcess.EMWA_filter();
+            String s = "EMWA filter: " + Math.round(EWMA_filtered_value);
+            tempIntRotAcc.setText(s);
+            Log.i(LOG_TAG, s);
         }
-        //tempIntRotAcc.setText("Rotation from accelerometer: " + Math.round(pitchRollYaw[0]) + ", " + Math.round(pitchRollYaw[1]) + ", " + Math.round(pitchRollYaw[2]));
-        tempIntRotAcc.setText("EMWA filter: " + Math.round(EWMA_filtered_values[0]) + ", " + Math.round(EWMA_filtered_values[1]) + ", " + Math.round(EWMA_filtered_values[2]));
-
-        EWMA_filtered_values[0] = DataProcess.EMWA_filter(pitchRollYaw[0], (float) 0.5, EWMA_filtered_values[0]);
-        EWMA_filtered_values[1] = DataProcess.EMWA_filter(pitchRollYaw[1], (float) 0.5, EWMA_filtered_values[1]);
-        EWMA_filtered_values[2] = DataProcess.EMWA_filter(pitchRollYaw[2], (float) 0.5, EWMA_filtered_values[2]);
-        Log.i(LOG_TAG, "EMWA filter: " + EWMA_filtered_values[0] + ", " + EWMA_filtered_values[1] + ", " + EWMA_filtered_values[2]);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
-            float gx = (float) Math.toDegrees(event.values[0]);
-            float gy = (float) Math.toDegrees(event.values[1]);
-            float gz = (float) Math.toDegrees(event.values[2]);
-
             dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
             timestamp = System.currentTimeMillis(); // for storing old value
-
-            //rotation from gyroscope
-            rotFromGyro = DataProcess.rotFromGyroscope(gx, gy, gz, rotFromGyro[0], rotFromGyro[1], rotFromGyro[2], dT);
+            cDataProcess.setGyro((float) Math.toDegrees(event.values[0]), (float) Math.toDegrees(event.values[1]), (float) Math.toDegrees(event.values[2]), dT);
+            cDataProcess.rotFromGyroscope();
         }
 
-        //tempIntRotGyro.setText("Rotation from gyroscope: " + Math.round(rotFromGyro[0]) + ", " + Math.round(rotFromGyro[1]) + ", " + Math.round(rotFromGyro[2]));
-        tempIntRotGyro.setText("Complimentary filter: " + Math.round(complimentary_filtered_values[0]) + ", " + Math.round(complimentary_filtered_values[1]) + ", " + Math.round(complimentary_filtered_values[2]));
-
-        //Complimentary filter
-        complimentary_filtered_values[0] = DataProcess.complimentaryFilter(rotFromGyro[0], pitchRollYaw[0], (float) 0.5, complimentary_filtered_values[0], dT);
-        complimentary_filtered_values[1] = DataProcess.complimentaryFilter(rotFromGyro[1], pitchRollYaw[1], (float) 0.5, complimentary_filtered_values[1], dT);
-        complimentary_filtered_values[2] = DataProcess.complimentaryFilter(rotFromGyro[2], pitchRollYaw[2], (float) 0.5, complimentary_filtered_values[2], dT);
-        Log.i(LOG_TAG, "Complimentary filter: " + complimentary_filtered_values[0] + ", " + complimentary_filtered_values[1] + ", " + complimentary_filtered_values[2]);
+        complimentary_filtered_value = cDataProcess.complimentaryFilter();
+        String s ="Complimentary filter: " + Math.round(cDataProcess.complimentaryFilter());
+        tempIntRotGyro.setText(s);
+        Log.i(LOG_TAG, s);
         //Todo: figure out how to save values: list, array, ... ?
     }
 

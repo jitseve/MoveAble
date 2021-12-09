@@ -54,19 +54,20 @@ import java.util.List;
 import java.util.UUID;
 
 import kth.jjve.moveable.datastorage.DataStorage;
-import kth.jjve.moveable.datastorage.Settings;
+import kth.jjve.moveable.utilities.TypeConverter;
 import kth.jjve.moveable.dialogs.BluetoothActivity;
 import kth.jjve.moveable.dialogs.SaveDialog;
-import kth.jjve.moveable.utilities.TypeConverter;
+import kth.jjve.moveable.datastorage.Settings;
+import kth.jjve.moveable.utils.DataProcess;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
-
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
+    private TextView tempTimeView, tempAccView, tempIntRotAcc, tempIntRotGyro;
     public LineChart lineChart;
     private Toolbar toolbar;
 
@@ -84,13 +85,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
-    private double dT;
-    private double ax, ay, az;
-    private double roll_x, pitch_y, yaw_z;
-    private double gx, gy, gz;
-    private double rot_x = 0;
-    private double rot_y = 0;
-    private double rot_z = 0;
+    /*---------------- DATA PROCESS -------------------*/
+    private DataProcess cDataProcess;
+
+    // internal sensor variables, can probs be turned into local variables for some
+    private float dT;
+    private long timestamp = 0;
+    private float complimentary_filtered_value;
+    private float EWMA_filtered_value;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
@@ -127,6 +129,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         bluetoothEnabled = findViewById(R.id.iv_main_bluetoothEnabled);
         Button buttonRecord = findViewById(R.id.button_main_record);
         Button buttonSave = findViewById(R.id.button_main_stop);
+        ImageView graph = findViewById(R.id.iv_main_datagraph);
+        tempTimeView = findViewById(R.id.temp_tv_main_Time); //Todo: when graph is done, these can disappear
+        tempAccView = findViewById(R.id.temp_tv_main_Acc);
+        tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
+        tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
         lineChart = findViewById(R.id.main_linechart);
 
         /*---------------- INIT -----------------*/
@@ -135,7 +142,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         initNavMenu();                  // Initialise navigation menu
         initInternalSensors();          // Initialise internal sensors
         mHandler = new Handler();       // Initialise handler
-
+      
         /*-------------- LISTENERS --------------*/
         bluetoothSettings.setOnClickListener(this::onClick);
         //Todo: change functionality of these buttons
@@ -218,6 +225,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else{
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
+            timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
         }
     }
 
@@ -370,46 +378,39 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
 
+
     /*||||||||||| SENSOR ACTIVITY |||||||||||*/
     @Override
     public void onSensorChanged(SensorEvent event) {
-        //Todo: document
+        if (cDataProcess == null) cDataProcess = new DataProcess();
         if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
-            ax=event.values[0];
-            ay=event.values[1];
-            az=event.values[2];
-
-            // rotation from acceleration data
-            roll_x = Math.toDegrees(Math.atan(ay / (Math.sqrt(Math.pow(ax, 2) + Math.pow(ax, 2)))));
-            pitch_y = Math.toDegrees(Math.atan(ax / (Math.sqrt(Math.pow(ay, 2) + Math.pow(ax, 2)))));
-            yaw_z = Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(ax, 2) + Math.pow(ay, 2)) / az )));
+            cDataProcess.setAcceleration(event.values[0], event.values[1], event.values[2]);
+            cDataProcess.rotFromAcc();
+            EWMA_filtered_value = cDataProcess.EMWA_filter();
+            String s = "EMWA filter: " + Math.round(EWMA_filtered_value);
+            tempIntRotAcc.setText(s);
+            Log.i(LOG_TAG, s);
         }
-        //Log.i(LOG_TAG, "Acceleration    x: " + ax + ", y: " + ay + ", z: " + az);
-        //Log.i(LOG_TAG, "roll_x: " + roll_x + ", pitch_y: " + pitch_y + ", yaw_z: " + yaw_z);
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
-            gx=event.values[0];
-            gy=event.values[1];
-            gz=event.values[2];
-
-            //rotation from gyroscope
-            rot_x = rotFromGyroscope(gx, rot_x);
-            rot_y = rotFromGyroscope(gx, rot_y);
-            rot_z = rotFromGyroscope(gx, rot_z);
+            dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
+            timestamp = System.currentTimeMillis(); // for storing old value
+            cDataProcess.setGyro((float) Math.toDegrees(event.values[0]), (float) Math.toDegrees(event.values[1]), (float) Math.toDegrees(event.values[2]), dT);
+            cDataProcess.rotFromGyroscope();
         }
-        //Log.i(LOG_TAG, "Gyroscope    x: " + gx + ", y: " + gy + ", z: " + gz);
-        Log.i(LOG_TAG, "Rotation:      rot_x: " + rot_x + ", rot_y: " + rot_y + ", rot_z: " + rot_z);
+
+        complimentary_filtered_value = cDataProcess.complimentaryFilter();
+        String s ="Complimentary filter: " + Math.round(cDataProcess.complimentaryFilter());
+        tempIntRotGyro.setText(s);
+        Log.i(LOG_TAG, s);
         //Todo: figure out how to save values: list, array, ... ?
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // need to overwrite, when implement sensor stuff
+        Toast.makeText(getApplicationContext(), "Sensor accuracy changed", Toast.LENGTH_SHORT).show();
         // Todo: check if we need to add something here if accuracy has changed
-    }
-
-    private double rotFromGyroscope(double gyro_value, double previous_rot_value) {
-        return previous_rot_value + (dT * gyro_value);
     }
 
     /*||||||||||| INITIALISATIONS |||||||||||*/
@@ -434,7 +435,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
-            dT = 1/ (double) cFrequencyInteger;
+            dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
         }else{
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

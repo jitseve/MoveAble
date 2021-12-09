@@ -106,6 +106,18 @@
             app:layout_constraintTop_toBottomOf="@+id/main_toolbar"
             app:srcCompat="@drawable/underconstruction" />
 
+        <com.github.mikephil.charting.charts.LineChart
+            android:id="@+id/main_linechart"
+            android:layout_width="0dp"
+            android:layout_height="400dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toTopOf="@+id/button_main_record"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/main_toolbar" />
+
         <TextView
             android:id="@+id/temp_tv_main_Time"
             android:layout_width="wrap_content"

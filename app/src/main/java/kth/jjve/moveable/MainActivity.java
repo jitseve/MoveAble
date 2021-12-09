@@ -9,13 +9,9 @@ Date: 12.12.21
  */
 
 import static kth.jjve.moveable.utilities.VisibilityChanger.setViewVisibility;
-import kth.jjve.moveable.utilities.TypeConverter;
-import kth.jjve.moveable.dialogs.BluetoothActivity;
-import kth.jjve.moveable.dialogs.SaveDialog;
-import kth.jjve.moveable.datastorage.Settings;
-import kth.jjve.moveable.utils.DataProcess;
+import static kth.jjve.moveable.utilities.DisplayGraph.displayTheGraph;
+import static kth.jjve.moveable.utilities.VisibilityChanger.setViewsInvisible;
 
-import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
@@ -49,24 +45,31 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.github.mikephil.charting.charts.LineChart;
 import com.google.android.material.navigation.NavigationView;
-
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.util.List;
 import java.util.UUID;
 
-public class MainActivity<rotFromGyro> extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
+import kth.jjve.moveable.datastorage.DataStorage;
+import kth.jjve.moveable.utilities.TypeConverter;
+import kth.jjve.moveable.dialogs.BluetoothActivity;
+import kth.jjve.moveable.dialogs.SaveDialog;
+import kth.jjve.moveable.datastorage.Settings;
+import kth.jjve.moveable.utils.DataProcess;
 
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, SaveDialog.SaveDialogListener, SensorEventListener {
     /*--------------------------- VIEW ----------------------*/
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
-
     private TextView tempTimeView, tempAccView, tempIntRotAcc, tempIntRotGyro;
+    public LineChart lineChart;
+    private Toolbar toolbar;
 
     /*--------------------------- LOG -----------------------*/
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
@@ -74,8 +77,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     /*------------------------- PREFS ---------------------*/
     private Settings cSettings;
     private int cFrequencyInteger;
-    private int frequencyInteger;
-    private String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
+    private final String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
 
     /*---------------- INTERNAL SENSORS -------------------*/
     //TODO both variables were private final in android documentation, why?
@@ -98,33 +100,30 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     private final byte MOVESENSE_REQ = 1, MOVESENSE_RES = 2, REQUEST_ID = 99;
     private BluetoothGatt mBluetoothGatt = null;
 
-//    public final UUID MOVESENSE_20_SERVICE = UUID.fromString(getResources().getString(R.string.uuidMS2_0Service));
-//    public final UUID MOVESENSE_20_COMMAND_CHAR = UUID.fromString(getResources().getString(R.string.uuidMS2_0CommandChar));
-//    public final UUID MOVESENSE_20_DATA_CHAR = UUID.fromString(getResources().getString(R.string.uuidMS2_0DataChar));
-//    public final UUID CLIENT_CHAR_CONFIG = UUID.fromString(getResources().getString(R.string.uuidClientCharConfig));
-
     public static final UUID MOVESENSE_20_SERVICE =
             UUID.fromString("34802252-7185-4d5d-b431-630e7050e8f0");
     public static final UUID MOVESENSE_20_COMMAND_CHAR =
             UUID.fromString("34800001-7185-4d5d-b431-630e7050e8f0");
     public static final UUID MOVESENSE_20_DATA_CHAR =
             UUID.fromString("34800002-7185-4d5d-b431-630e7050e8f0");
-    // UUID for the client characteristic, which is necessary for notifications
     public static final UUID CLIENT_CHAR_CONFIG =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     /*----------------------- HANDLER -----------------------*/
     public Handler mHandler;
 
+    /*----------------------- DATA ----------------------*/
+    DataStorage dataStorage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        /*---------------------- Hooks ----------------------*/
+        /*---------------- HOOKS ----------------*/
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
-        Toolbar toolbar = findViewById(R.id.main_toolbar);
+        toolbar = findViewById(R.id.main_toolbar);
         bluetoothSettings = findViewById(R.id.iv_main_bluetoothSearch);
         bluetoothDisabled = findViewById(R.id.iv_main_bluetoothDisabled);
         bluetoothEnabled = findViewById(R.id.iv_main_bluetoothEnabled);
@@ -135,85 +134,37 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         tempAccView = findViewById(R.id.temp_tv_main_Acc);
         tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
         tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
+        lineChart = findViewById(R.id.main_linechart);
 
-        /*---------------------- Settings ----------------------*/
-        deserialise();
-        if (cSettings == null){
-            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
-            startActivity(intent);
-        }
-        frequencyInteger = cSettings.getFrequencyInteger();
-
-
-        /*--------------------- Tool bar --------------------*/
-        setSupportActionBar(toolbar);
-
-        /*---------------Navigation drawer menu -------------*/
-        navigationView.bringToFront();
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this,drawerLayout, toolbar,
-                R.string.nav_open, R.string.nav_close);
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-        navigationView.setNavigationItemSelectedListener(this);
-        navigationView.setCheckedItem(R.id.nav_home);
-
-        /*---------------- INT SENSORS ----------------------*/
-        //dT = 1/ Double.valueOf(frequencyInteger);
-        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
-
-        // Accelerometer
-        if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null){
-            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-            Log.i(LOG_TAG, "accelerometer found");
-        } else {
-            Toast.makeText(getApplicationContext(), "No accelerometer found", Toast.LENGTH_SHORT).show();
-        }
-
-        // Gyroscope
-        if (mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null){
-            mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-            Log.i(LOG_TAG, "accelerometer found");
-        } else {
-            Toast.makeText(getApplicationContext(), "No gyroscope found", Toast.LENGTH_SHORT).show();
-        }
-
-        /*-------------- On Click Listener ------------------*/
+        /*---------------- INIT -----------------*/
+        getSettings();                  // Initialise settings
+        setSupportActionBar(toolbar);   // Initialise toolbar
+        initNavMenu();                  // Initialise navigation menu
+        initInternalSensors();          // Initialise internal sensors
+        mHandler = new Handler();       // Initialise handler
+      
+        /*-------------- LISTENERS --------------*/
         bluetoothSettings.setOnClickListener(this::onClick);
+        //Todo: change functionality of these buttons
         bluetoothDisabled.setOnClickListener(this::onClick);
+
         bluetoothEnabled.setOnClickListener(this::onClick);
+
         buttonRecord.setOnClickListener(v -> {
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
             acquireData();
-            Log.i(LOG_TAG, "Recording has started");          
-        });
+            Log.i(LOG_TAG, "Recording has started"); });
+
         buttonSave.setOnClickListener(v -> {
             stopData();
-            tempAccView.setVisibility(View.INVISIBLE);
-            tempTimeView.setVisibility(View.INVISIBLE);
-            graph.setVisibility(View.INVISIBLE);
-            Toast.makeText(getApplicationContext(), "Recording has stopped", Toast.LENGTH_SHORT).show();
             openSaveDialog();
-            Log.i(LOG_TAG, "Recording has stopped and is being saved");
-        });
-
-        mHandler = new Handler();
+            Log.i(LOG_TAG, "Recording has stopped and is being saved"); });
     }
 
     @Override
     protected void onResume(){
         super.onResume();
         navigationView.setCheckedItem(R.id.nav_home);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        stopData();
     }
 
     @Override
@@ -246,6 +197,7 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
             new ActivityResultCallback<ActivityResult>() {
                 @Override
                 public void onActivityResult(ActivityResult result) {
+                    // Bluetooth connect gives a result, that is checked here
                     if (result.getResultCode() == 69){
                         Intent intent = result.getData();
                         if (intent != null){
@@ -261,7 +213,11 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
             });
 
     private void acquireData(){
+        // Method to acquire the data. When connected to bluetooth, that sensor is used
+        // Otherwise, internal sensors are used
         if (mBluetoothConnected){
+            dataStorage = new DataStorage();
+            lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =
                         mSelectedDevice.connectGatt(this, false, mBtGattCallback);
@@ -269,46 +225,50 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         } else{
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
-            //timestamp for 1st value of gyroscope rotation (init)
-            timestamp = System.currentTimeMillis();
+            timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
         }
     }
 
     private void stopData(){
-      if (mBluetoothConnected){
-        if(mBluetoothGatt != null){
-            mBluetoothGatt.disconnect();
-            try{
-                mBluetoothGatt.close();
-                Log.i(LOG_TAG, "bluetooth gatt closed");
-            }catch (Exception e){
-                Log.i(LOG_TAG, "Exception is " + e);
-                e.printStackTrace();
+        // Method to stop the acquiring of data
+        setViewsInvisible(lineChart);
+        if (mBluetoothConnected) {
+            if (mBluetoothGatt != null) {
+                mBluetoothGatt.disconnect();
+                setViewsInvisible(lineChart);
+                try {
+                    mBluetoothGatt.close();
+                    Log.i(LOG_TAG, "bluetooth gatt closed");
+                } catch (Exception e) {
+                    Log.i(LOG_TAG, "Exception is " + e);
+                    e.printStackTrace();
+                }
             }
-        }
-      }else{     
+        } else{
           mSensorManager.unregisterListener(this);
-      }
+        }
     }
 
-    /*||||||||||| BLUETOOTH STUFF |||||||||||*/
+    /*||||||||||| BLUETOOTH CALLBACK |||||||||||*/
     private final BluetoothGattCallback mBtGattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            // Method to check the state of the bluetooth sensor
             if (newState == BluetoothGatt.STATE_CONNECTED){
                 mBluetoothGatt = gatt;
                 mHandler.post(() -> setViewVisibility(bluetoothEnabled, bluetoothDisabled, bluetoothSettings));
                 gatt.discoverServices();
-                Log.i(LOG_TAG, "state connected");
+                Log.i(LOG_TAG, "sensor is connected");
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED){
                 mBluetoothGatt = null;
                 mHandler.post(() -> setViewVisibility(bluetoothDisabled, bluetoothEnabled, bluetoothSettings));
-                Log.i(LOG_TAG, "state disconnected");
+                Log.i(LOG_TAG, "sensor is disconnected");
             }
         }
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            // Method to check if services are discovered
             if (status == BluetoothGatt.GATT_SUCCESS){
                 List<BluetoothGattService> services = gatt.getServices();
                 for (BluetoothGattService service: services){
@@ -328,8 +288,8 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
                     byte[] command =
                             TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
                     commandChar.setValue(command);
-                    boolean wasSuccessfull = mBluetoothGatt.writeCharacteristic(commandChar);
-                    Log.i("writeCharacteristic", "was succesfull = " + wasSuccessfull);
+                    boolean wasSuccessful = mBluetoothGatt.writeCharacteristic(commandChar);
+                    Log.i("writeCharacteristic", "was successful = " + wasSuccessful);
                 } else {
                     Log.i(LOG_TAG, "service not found");
                 }
@@ -338,13 +298,14 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            // Method to check the bluetooth characteristics
             Log.i(LOG_TAG, "onCharacteristicWrite " + characteristic.getUuid().toString());
             BluetoothGattService movesenseService = gatt.getService(MOVESENSE_20_SERVICE);
             BluetoothGattCharacteristic dataCharacteristic =
                     movesenseService.getCharacteristic(MOVESENSE_20_DATA_CHAR);
             boolean success = gatt.setCharacteristicNotification(dataCharacteristic, true);
             if (success) {
-                Log.i(LOG_TAG, "setCharactNotification success");
+                Log.i(LOG_TAG, "setCharacterNotification success");
                 BluetoothGattDescriptor descriptor =
                         dataCharacteristic.getDescriptor(CLIENT_CHAR_CONFIG);
                 descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
@@ -361,35 +322,25 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            // Method to get the data from the movesense
             if (MOVESENSE_20_DATA_CHAR.equals(characteristic.getUuid())) {
                 byte[] data = characteristic.getValue();
                 if (data[0] == MOVESENSE_RES && data[1] == REQUEST_ID) {
-                    // NB! use length of the array to determine the number of values in this
-                    // "packet", the number of values in the packet depends on the frequency set(!)
-                    int len = data.length;
-
                     // parse and interpret the data, ...
                     int time = TypeConverter.fourBytesToInt(data, 2);
                     float accX = TypeConverter.fourBytesToFloat(data, 6);
                     float accY = TypeConverter.fourBytesToFloat(data, 10);
                     float accZ = TypeConverter.fourBytesToFloat(data, 14);
 
-                    // Todo: filter the data (one filter function)
-                    // Todo: add filtered data to a list
-                    // Todo: save the list (expanding)
-                    // Todo: save the data to a list with a fixed length to display in graph
+                    // Todo: filter the data (one filter function) and add that data to the datastorage
 
+                    dataStorage.writeData(time, accX);
+
+                    displayTheGraph(dataStorage.getXGraphdata(), dataStorage.getYGraphdata(), lineChart);
                     String accStr = "" + accX + " " + accY + " " + accZ;
                     Log.i("acc data", "" + time + " " + accStr);
 
-                    @SuppressLint("DefaultLocale") final String viewDataStr = String.format("%.2f, %.2f, %.2f", accX, accY, accZ);
-                    mHandler.post(() -> {
-                        String timeString = time + " ms";
-                        tempTimeView.setText(timeString);
-                        tempTimeView.setVisibility(View.VISIBLE);
-                        tempAccView.setText(viewDataStr);
-                        tempAccView.setVisibility(View.VISIBLE);
-                    });
+                    if (dataStorage.getRunningTime() > 10000) stopData();
                 }
             }
         }
@@ -410,7 +361,6 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
     };
 
     /*||||||||||| SAVE DIALOG |||||||||||*/
-
     public void openSaveDialog() {
         // Method that will open the dialog for saving
         SaveDialog saveDialog = new SaveDialog();
@@ -428,8 +378,8 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         Toast.makeText(getApplicationContext(), "saving cancelled", Toast.LENGTH_SHORT).show();
     }
 
-        /*||||||||||| SENSOR ACTIVITY |||||||||||*/
 
+    /*||||||||||| SENSOR ACTIVITY |||||||||||*/
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (cDataProcess == null) cDataProcess = new DataProcess();
@@ -463,10 +413,9 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
         // Todo: check if we need to add something here if accuracy has changed
     }
 
-
-    /*||||||||||| SERIALISATION |||||||||||*/
-    private void deserialise() {
-        // Method to deserialise input file
+    /*||||||||||| INITIALISATIONS |||||||||||*/
+    private void getSettings() {
+        // Method to deserialize input file
         try{
             FileInputStream fin = openFileInput("settings.ser");
 
@@ -486,7 +435,40 @@ public class MainActivity<rotFromGyro> extends AppCompatActivity implements Navi
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
+            dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
+        }else{
+            Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+            startActivity(intent);
         }
+
+    }
+
+    private void initInternalSensors() {
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null){
+            mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Toast.makeText(getApplicationContext(), "No accelerometer found", Toast.LENGTH_SHORT).show();
+        }
+
+        if (mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null){
+            mGyroscope = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            Log.i(LOG_TAG, "accelerometer found");
+        } else {
+            Toast.makeText(getApplicationContext(), "No gyroscope found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void initNavMenu(){
+        navigationView.bringToFront();
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this,drawerLayout, toolbar,
+                R.string.nav_open, R.string.nav_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+        navigationView.setNavigationItemSelectedListener(this);
+        navigationView.setCheckedItem(R.id.nav_home);
     }
 
 }

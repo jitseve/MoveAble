@@ -80,17 +80,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
 
     /*---------------- INTERNAL SENSORS -------------------*/
-    //TODO both variables were private final in android documentation, why?
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
     private Sensor mGyroscope;
 
     /*---------------- DATA PROCESS -------------------*/
     private DataProcess cDataProcess;
-
     // internal sensor variables, can probs be turned into local variables for some
     private float dT;
     private long timestamp = 0;
+    private long initT;
     private float complimentary_filtered_value;
     private float EWMA_filtered_value;
 
@@ -114,6 +113,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     /*----------------------- DATA ----------------------*/
     DataStorage dataStorage;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -157,7 +157,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         buttonSave.setOnClickListener(v -> {
             stopData();
-            openSaveDialog();
             Log.i(LOG_TAG, "Recording has stopped and is being saved"); });
     }
 
@@ -215,8 +214,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void acquireData(){
         // Method to acquire the data. When connected to bluetooth, that sensor is used
         // Otherwise, internal sensors are used
+        dataStorage = new DataStorage();
         if (mBluetoothConnected){
-            dataStorage = new DataStorage();
             lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =
@@ -226,6 +225,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
             timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
+            initT = System.currentTimeMillis();
+
         }
     }
 
@@ -246,7 +247,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         } else{
           mSensorManager.unregisterListener(this);
+          dataStorage.writeCSV();
         }
+        openSaveDialog();
     }
 
     /*||||||||||| BLUETOOTH CALLBACK |||||||||||*/
@@ -386,10 +389,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
             cDataProcess.setAcceleration(event.values[0], event.values[1], event.values[2]);
             cDataProcess.rotFromAcc();
-            EWMA_filtered_value = cDataProcess.EMWA_filter();
-            String s = "EMWA filter: " + Math.round(EWMA_filtered_value);
-            tempIntRotAcc.setText(s);
-            Log.i(LOG_TAG, s);
+
         }
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
@@ -399,11 +399,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             cDataProcess.rotFromGyroscope();
         }
 
+        EWMA_filtered_value = cDataProcess.EMWA_filter();
+        String s1 = "EMWA filter: " + Math.round(EWMA_filtered_value);
+        tempIntRotAcc.setText(s1);
+        //Log.i(LOG_TAG, s);
+
         complimentary_filtered_value = cDataProcess.complimentaryFilter();
-        String s ="Complimentary filter: " + Math.round(cDataProcess.complimentaryFilter());
-        tempIntRotGyro.setText(s);
-        Log.i(LOG_TAG, s);
-        //Todo: figure out how to save values: list, array, ... ?
+        String s2 ="Complimentary filter: " + Math.round(cDataProcess.complimentaryFilter());
+        tempIntRotGyro.setText(s2);
+        //Log.i(LOG_TAG, s);
+
+        dataStorage.writeDataForCSV(timestamp, EWMA_filtered_value, complimentary_filtered_value);
+
+        if ((System.currentTimeMillis() - initT) > 10000) {
+            stopData();
+        }
     }
 
     @Override
@@ -435,7 +445,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
-            dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
+            //dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
         }else{
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

@@ -5,6 +5,13 @@ List one has a fixed length, to display in the graph (bluetooth)
 List two saves all the data (length is growing).
  */
 
+import android.content.Context;
+import android.os.Environment;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,6 +24,10 @@ public class DataStorage {
     Integer firstX;
     boolean firstRun = true;
 
+    List<Long> timeData;
+    List<Float> ewmaData;
+    List<Float> complimentaryData;
+
     public DataStorage() {
         // Initialise the class
         xDataGraph = new ArrayList<>(Collections.nCopies(100, 0));
@@ -24,6 +35,10 @@ public class DataStorage {
 
         xData = new ArrayList<>();
         yData = new ArrayList<>();
+
+        timeData = new ArrayList<>();
+        ewmaData = new ArrayList<>();
+        complimentaryData = new ArrayList<>();
     }
 
     public void writeData(int x, float y) {
@@ -39,6 +54,37 @@ public class DataStorage {
 
         xData.add(x - firstX);
         yData.add(y);
+    }
+
+    public void writeDataForCSV(long time, float ewma, float complimentary) {
+        timeData.add(time);
+        ewmaData.add(ewma);
+        complimentaryData.add(complimentary);
+    }
+
+    public void writeCSV(){
+        String filename = "data.csv";
+        File directoryDownload = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File logDir = new File (directoryDownload, "data"); //Creates a new folder in DOWNLOAD directory
+        logDir.mkdirs();
+        File file = new File(logDir, filename);
+
+        FileOutputStream outputStream = null;
+        try {
+            try {
+                outputStream = new FileOutputStream(file, true);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            for (int i = 0; i < timeData.size(); i += 3) {
+                outputStream.write((timeData.get(i) + ",").getBytes());
+                outputStream.write((ewmaData.get(i + 1) + ",").getBytes());
+                outputStream.write((complimentaryData.get(i + 2) + "\n").getBytes());
+            }
+            outputStream.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public List<Integer> getXGraphdata() {

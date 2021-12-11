@@ -77,7 +77,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*------------------------- PREFS ---------------------*/
     private Settings cSettings;
     private int cFrequencyInteger;
-    private final String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
+    private String IMU_COMMAND = "Meas/Acc/13";
+    private String command_fragment = "Meas/Acc";
 
     /*---------------- INTERNAL SENSORS -------------------*/
     private SensorManager mSensorManager;
@@ -340,19 +341,49 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 byte[] data = characteristic.getValue();
                 if (data[0] == MOVESENSE_RES && data[1] == REQUEST_ID) {
                     // parse and interpret the data, ...
-                    int time = TypeConverter.fourBytesToInt(data, 2);
-                    float accX = TypeConverter.fourBytesToFloat(data, 6);
-                    float accY = TypeConverter.fourBytesToFloat(data, 10);
-                    float accZ = TypeConverter.fourBytesToFloat(data, 14);
+                    if (command_fragment.equals("/Meas/Acc/")){
+                        int len = data.length;
+                        for (int i = 2; i < len; i+=16){
+                            int time = TypeConverter.fourBytesToInt(data, i);
+                            float accX = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float accY = TypeConverter.fourBytesToFloat(data, 8 + i);
+                            float accZ = TypeConverter.fourBytesToFloat(data, 12 + i);
+                            dataStorage.writeData(time, accX);
+                            String accStr = "" + accX + " " + accY + " " + accZ;
+                            Log.i("acc data", "" + time + " " + accStr);
+                        }
+                    } else if (command_fragment.equals("/Meas/Gyro/")){
+                        int len = data.length;
+                        for (int i = 2; i < len; i=+16){
+                            int time = TypeConverter.fourBytesToInt(data, i);
+                            float gyroX = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float gyroY = TypeConverter.fourBytesToFloat(data, 8 + i);
+                            float gyroZ = TypeConverter.fourBytesToFloat(data, 12 + i);
+                            dataStorage.writeData(time, gyroX);
+                            String gyroStr = "" + gyroX + " " + gyroY + " " + gyroZ;
+                            Log.i("gyro data", "" + time + " " + gyroStr);
+                        }
+                    } else{
+                        int len = data.length;
+                        for (int i = 2; i < len; i=+28){
+                            int time = TypeConverter.fourBytesToInt(data, i);
+                            float accX = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float accY = TypeConverter.fourBytesToFloat(data, 8 + i);
+                            float accZ = TypeConverter.fourBytesToFloat(data, 12 + i);
+                            float gyroX = TypeConverter.fourBytesToFloat(data, 16 + i);
+                            float gyroY = TypeConverter.fourBytesToFloat(data, 20 + i);
+                            float gyroZ = TypeConverter.fourBytesToFloat(data, 24 + i);
 
-                    // Todo: filter the data (one filter function) and add that data to the datastorage
+                            dataStorage.writeData(time, gyroX);
+                            String accStr = "" + accX + " " + accY + " " + accZ;
+                            Log.i("acc data", "" + time + " " + accStr);
+                            String gyroStr = "" + gyroX + " " + gyroY + " " + gyroZ;
+                            Log.i("gyro data", "" + time + " " + gyroStr);
 
-                    dataStorage.writeData(time, accX);
-
+                        }
+                    }
+                    //Todo: find out why the following lines don't get executed anymore?
                     displayTheGraph(dataStorage.getXGraphdata(), dataStorage.getYGraphdata(), lineChart);
-                    String accStr = "" + accX + " " + accY + " " + accZ;
-                    Log.i("acc data", "" + time + " " + accStr);
-
                     if (dataStorage.getRunningTime() > 10000) stopData();
                 }
             }
@@ -370,7 +401,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     });
                 }
         }
-
     };
 
     /*||||||||||| SAVE DIALOG |||||||||||*/
@@ -455,7 +485,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
-
+            IMU_COMMAND = cSettings.getCommand();
+            command_fragment = cSettings.getCommandFragment();
         }else{
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

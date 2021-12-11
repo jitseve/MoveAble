@@ -61,9 +61,9 @@ public class Settings implements Serializable {
         if (AccOn && GyroOn){
             command = "/Meas/IMU6/";
         } else if (AccOn){
-            command = "/Meas/acc/";
+            command = "/Meas/Acc/";
         } else if (GyroOn){
-            command = "/Meas/gyro/";
+            command = "/Meas/Gyro/";
         } else{
             Log.i("settings", "No bluetoothtype set");
         }
@@ -73,6 +73,10 @@ public class Settings implements Serializable {
     public boolean getAcc(){return AccOn;}
 
     public boolean getGyro(){return GyroOn;}
+
+    public String getCommandFragment(){
+        return command;
+    }
 
     public String getCommand(){
         return command + sFrequencyInteger;

@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
-    private TextView tempTimeView, tempAccView, tempIntRotAcc, tempIntRotGyro;
+    private TextView tempIntRotAcc, tempIntRotGyro;
     public LineChart lineChart;
     private Toolbar toolbar;
 
@@ -98,6 +98,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean mBluetoothConnected;
     private final byte MOVESENSE_REQ = 1, MOVESENSE_RES = 2, REQUEST_ID = 99;
     private BluetoothGatt mBluetoothGatt = null;
+    private byte[] command;
+    public boolean resetBT = false;
 
     public static final UUID MOVESENSE_20_SERVICE =
             UUID.fromString("34802252-7185-4d5d-b431-630e7050e8f0");
@@ -129,9 +131,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         bluetoothEnabled = findViewById(R.id.iv_main_bluetoothEnabled);
         Button buttonRecord = findViewById(R.id.button_main_record);
         Button buttonSave = findViewById(R.id.button_main_stop);
-        ImageView graph = findViewById(R.id.iv_main_datagraph);
-        tempTimeView = findViewById(R.id.temp_tv_main_Time); //Todo: when graph is done, these can disappear
-        tempAccView = findViewById(R.id.temp_tv_main_Acc);
         tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
         tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
         lineChart = findViewById(R.id.main_linechart);
@@ -226,7 +225,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
             timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
             initT = System.currentTimeMillis();
-
         }
     }
 
@@ -235,6 +233,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setViewsInvisible(lineChart);
         if (mBluetoothConnected) {
             if (mBluetoothGatt != null) {
+                resetBT = true;
+                mBtGattCallback.onServicesDiscovered(mBluetoothGatt, 0);
                 mBluetoothGatt.disconnect();
                 setViewsInvisible(lineChart);
                 try {
@@ -247,7 +247,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         } else{
           mSensorManager.unregisterListener(this);
-          dataStorage.writeCSV();
         }
         openSaveDialog();
     }
@@ -288,11 +287,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     BluetoothGattCharacteristic commandChar =
                             movesenseService.getCharacteristic(MOVESENSE_20_COMMAND_CHAR);
-                    byte[] command =
-                            TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
+                    if (resetBT) {
+                        command[0] = 2;
+                        command[1] = 99;
+                    } else{
+                        command =
+                                TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
+                    }
                     commandChar.setValue(command);
                     boolean wasSuccessful = mBluetoothGatt.writeCharacteristic(commandChar);
                     Log.i("writeCharacteristic", "was successful = " + wasSuccessful);
+                    if (wasSuccessful && resetBT){
+                        mHandler.post(() -> {
+                           Toast.makeText(getApplicationContext(), "Bluetooth reset", Toast.LENGTH_SHORT).show();
+                           resetBT= false;
+                        });
+                    }
                 } else {
                     Log.i(LOG_TAG, "service not found");
                 }
@@ -373,7 +383,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void applyName(String name) {
         // Method to get the wanted filename from the dialog into the activity
-        // Todo: save the data here using the name somehow
+        dataStorage.writeCSV(name, mBluetoothConnected);
     }
 
     @Override
@@ -445,7 +455,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
-            //dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
+
         }else{
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

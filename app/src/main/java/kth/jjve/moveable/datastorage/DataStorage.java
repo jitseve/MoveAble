@@ -62,26 +62,28 @@ public class DataStorage {
         complimentaryData.add(complimentary);
     }
 
-    public void writeCSV(){
-        String filename = "data.csv";
+    public void writeCSV(String filename, boolean bluetoothconnected){
         File directoryDownload = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File logDir = new File (directoryDownload, "data"); //Creates a new folder in DOWNLOAD directory
         logDir.mkdirs();
         File file = new File(logDir, filename);
 
-        FileOutputStream outputStream = null;
+        FileOutputStream outputStream;
         try {
-            try {
-                outputStream = new FileOutputStream(file, true);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+            outputStream = new FileOutputStream(file, true);
+            if (bluetoothconnected){
+                for (int i = 0; i < xData.size(); i ++) {
+                    outputStream.write((xData.get(i) + ",").getBytes());
+                    outputStream.write((yData.get(i) + "\n").getBytes());
+                }
+            }else{
+                for (int i = 0; i < timeData.size(); i += 3) {
+                    //Todo: for Jitse; find out why i+1/i+2 for emwaData and compData
+                    outputStream.write((timeData.get(i) + ",").getBytes());
+                    outputStream.write((ewmaData.get(i + 1) + ",").getBytes());
+                    outputStream.write((complimentaryData.get(i + 2) + "\n").getBytes());
+                }
             }
-            for (int i = 0; i < timeData.size(); i += 3) {
-                outputStream.write((timeData.get(i) + ",").getBytes());
-                outputStream.write((ewmaData.get(i + 1) + ",").getBytes());
-                outputStream.write((complimentaryData.get(i + 2) + "\n").getBytes());
-            }
-            outputStream.close();
         } catch (Exception e) {
             e.printStackTrace();
         }

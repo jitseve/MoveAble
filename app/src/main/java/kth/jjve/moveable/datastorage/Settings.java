@@ -1,19 +1,26 @@
 package kth.jjve.moveable.datastorage;
 
+import android.util.Log;
+import android.widget.Toast;
+
 import java.io.Serializable;
+
+import kth.jjve.moveable.SettingsActivity;
 
 public class Settings implements Serializable {
     private String sFrequency;
     private int sFrequencyInteger;
-    private String sRetriever;
-    private String sOldRetriever;
+    private String command;
+    private boolean AccOn;
+    private boolean GyroOn;
 
-    public Settings(String frequency){
+    public Settings(String frequency, boolean acc, boolean gyro){
         sFrequency = frequency;
-        setRetriever();
+        freqToInteger();
+        setBtType(acc, gyro);
     }
 
-    private void setRetriever() {
+    private void freqToInteger() {
         switch (sFrequency){
             case "13 Hz":
                 sFrequencyInteger = 13;
@@ -45,6 +52,29 @@ public class Settings implements Serializable {
 
     public void setFrequency(String s){
         sFrequency = s;
-        setRetriever();
+        freqToInteger();
+    }
+    public void setBtType(boolean accOn, boolean gyroOn){
+        AccOn = accOn;
+        GyroOn = gyroOn;
+
+        if (AccOn && GyroOn){
+            command = "/Meas/IMU6/";
+        } else if (AccOn){
+            command = "/Meas/acc/";
+        } else if (GyroOn){
+            command = "/Meas/gyro/";
+        } else{
+            Log.i("settings", "No bluetoothtype set");
+        }
+
+    }
+
+    public boolean getAcc(){return AccOn;}
+
+    public boolean getGyro(){return GyroOn;}
+
+    public String getCommand(){
+        return command + sFrequencyInteger;
     }
 }

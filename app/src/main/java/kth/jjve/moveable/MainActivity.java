@@ -193,7 +193,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (id == R.id.nav_settings){
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
+        } else if (id == R.id.nav_resBL){
+            Intent intent = new Intent(MainActivity.this, BluetoothResults.class);
+            startActivity(intent);
+        } else if (id == R.id.nav_resIN){
+            Intent intent = new Intent(MainActivity.this, InternalSensorResults.class);
+            startActivity(intent);
         }
+
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }

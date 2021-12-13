@@ -263,7 +263,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (mBluetoothGatt != null){
             resetBT = true;
             mBtGattCallback.onServicesDiscovered(mBluetoothGatt, 0);
-            //Todo: don't think that this is right
             mBluetoothGatt.disconnect();
 //      setViewsInvisible(lineChart);
             try {
@@ -495,7 +494,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // need to overwrite, when implement sensor stuff
         Toast.makeText(getApplicationContext(), "Sensor accuracy changed", Toast.LENGTH_SHORT).show();
-        // Todo: check if we need to add something here if accuracy has changed
     }
 
     /*||||||||||| INITIALISATIONS |||||||||||*/

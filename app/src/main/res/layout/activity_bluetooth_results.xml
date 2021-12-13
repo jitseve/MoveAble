@@ -29,7 +29,7 @@
         app:layout_constraintHorizontal_bias="0.492"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView2"
-        app:srcCompat="@drawable/FastAbduction" />
+        app:srcCompat="@drawable/fastabduction" />
 
     <ImageView
         android:id="@+id/imageView2"
@@ -41,5 +41,5 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/SlowAbduction" />
+        app:srcCompat="@drawable/slowabduction" />
 </androidx.constraintlayout.widget.ConstraintLayout>

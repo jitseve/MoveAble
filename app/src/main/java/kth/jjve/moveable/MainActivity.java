@@ -230,6 +230,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         cDataProcess = new DataProcess();
         setViewsVisible(tempIntRotAcc, tempIntRotGyro);
         if (mBluetoothConnected){
+            if (command_fragment.equals("/Meas/Gyro")){
+                setViewsInvisible(tempIntRotAcc, tempIntRotGyro);
+            } else if (command_fragment.equals("/Meas/Acc")){
+                tempIntRotGyro.setVisibility(View.INVISIBLE);
+            }
 //            lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =

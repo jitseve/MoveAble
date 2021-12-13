@@ -20,8 +20,11 @@ import java.util.List;
 public class DataStorage {
     List<Long> xDataGraph;
     List<Long> xData;
-    List<Float> yDataGraph;
+    List<Float> yDataGraph1;
+    List<Float> yDataGraph2;
+    List<Float> yDataGraph3;
     List<Float> yData;
+    String dataName;
     long firstX;
     long currentTime;
     boolean firstRun = true;
@@ -33,7 +36,9 @@ public class DataStorage {
     public DataStorage() {
         // Initialise the class
         xDataGraph = new ArrayList<>(Collections.nCopies(100, (long) 0));
-        yDataGraph = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        yDataGraph1 = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        yDataGraph2 = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        yDataGraph3 = new ArrayList<>(Collections.nCopies(100, (float) 0));
 
         xData = new ArrayList<>();
         yData = new ArrayList<>();
@@ -50,13 +55,22 @@ public class DataStorage {
             firstRun = false;
         }
         currentTime = x - firstX;
-        xDataGraph.add(currentTime);      // add x to the end of the list
-        xDataGraph.remove(0);      // remove first item of the list
-        yDataGraph.add(y);
-        yDataGraph.remove(0);
-
-        xData.add(x - firstX);
+        xData.add(currentTime);
         yData.add(y);
+    }
+
+    public void writeDataforGraph(float y1, float y2, float y3, String name){
+        xDataGraph.add(currentTime);
+        yDataGraph1.add(y1);
+        yDataGraph2.add(y2);
+        yDataGraph3.add(y3);
+
+        xDataGraph.remove(0);
+        yDataGraph1.remove(0);
+        yDataGraph2.remove(0);
+        yDataGraph3.remove(0);
+
+        dataName = name;
     }
 
     public void writeDataForCSV(long time, float ewma, float complimentary) {
@@ -104,14 +118,23 @@ public class DataStorage {
         }
     }
 
-    public List<Long> getXGraphdata() {
+    public List<Long> getxDataGraph() {
         return xDataGraph;
     }
 
-    public List<Float> getYGraphdata() {
-        return yDataGraph;
+    public List<Float> getY1data() {
+        return yDataGraph1;
+    }
+    public List<Float> getY2data() {
+        return yDataGraph2;
+    }
+    public List<Float> getY3data() {
+        return yDataGraph3;
     }
 
+    public String getDataName(){
+        return dataName;
+    }
     public List<Long> getXData() {
         return xData;
     }

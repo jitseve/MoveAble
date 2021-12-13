@@ -47,6 +47,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 //import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.charts.LineChart;
 import com.google.android.material.navigation.NavigationView;
 
 import java.io.FileInputStream;
@@ -69,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
     private TextView tempIntRotAcc, tempIntRotGyro;
-//    public LineChart lineChart;
+    public LineChart lineChart;
     private Toolbar toolbar;
 
     /*--------------------------- LOG -----------------------*/
@@ -131,7 +132,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Button buttonSave = findViewById(R.id.button_main_stop);
         tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
         tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
-//        lineChart = findViewById(R.id.main_linechart);
+        lineChart = findViewById(R.id.main_linechart);
 
         /*---------------- INIT -----------------*/
         getSettings();                  // Initialise settings
@@ -143,8 +144,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         /*-------------- LISTENERS --------------*/
         bluetoothSettings.setOnClickListener(this::onClick);
         bluetoothDisabled.setOnClickListener(this::onClick);
-        bluetoothEnabled.setOnClickListener(this::onClick);
-        // Todo: make sure that a click on this one disables bluetooth
+        bluetoothEnabled.setOnClickListener(v -> MainActivity.this.resetBluetooth());
 
         buttonRecord.setOnClickListener(v -> {
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
@@ -235,7 +235,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             } else if (command_fragment.equals("/Meas/Acc")){
                 tempIntRotGyro.setVisibility(View.INVISIBLE);
             }
-//            lineChart.setVisibility(View.VISIBLE);
+            lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =
                         mSelectedDevice.connectGatt(this, false, mBtGattCallback);
@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void stopData(){
         // Method to stop the acquiring of data
-//        setViewsInvisible(lineChart);
+        setViewsInvisible(lineChart);
         if (mBluetoothConnected) {
             resetBluetooth();
         } else{
@@ -259,12 +259,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         openSaveDialog();
     }
 
-    private void resetBluetooth(){
+    public void resetBluetooth(){
         if (mBluetoothGatt != null){
             resetBT = true;
             mBtGattCallback.onServicesDiscovered(mBluetoothGatt, 0);
             mBluetoothGatt.disconnect();
-//      setViewsInvisible(lineChart);
             try {
                 mBluetoothGatt.close();
                 Log.i(LOG_TAG, "bluetooth gatt closed");
@@ -273,6 +272,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 e.printStackTrace();
             }
         }
+        setViewVisibility(bluetoothDisabled, bluetoothEnabled, bluetoothSettings);
+        mBluetoothConnected = false;
     }
 
     /*||||||||||| BLUETOOTH CALLBACK |||||||||||*/
@@ -371,9 +372,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             float accZ = TypeConverter.fourBytesToFloat(data, 8 + i);
 
                             cDataProcess.setAcceleration(accX, accY, accZ);
-                            float rot = cDataProcess.EMWA_filter(1, 0.5F);
+                            float rot = cDataProcess.EMWA_filter(2, 0.3F);
 
                             dataStorage.writeData(time, rot);
+                            dataStorage.writeDataforGraph(accX, accY, accZ, "acc");
 
                             mHandler.post(() ->{
                                 String s1 = "EMWA filter: " + Math.round(rot);
@@ -389,9 +391,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             float gyroZ = TypeConverter.fourBytesToFloat(data, 8 + i);
 
                             cDataProcess.setGyro(gyroX, gyroY, gyroZ, deltaT);
+                            dataStorage.writeDataforGraph(gyroX, gyroY, gyroZ, "Gyro");
                             dataStorage.writeData(time, gyroY);
-
-                            //Todo: display gyro in graph
 
                             String gyroStr = "" + gyroX + " " + gyroY + " " + gyroZ;
                             Log.i("gyro data", "" + time + " " + gyroStr);}
@@ -407,10 +408,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                             cDataProcess.setAcceleration(accX, accY, accZ);
                             cDataProcess.setGyro(gyroX, gyroY, gyroZ, deltaT);
-                            float emwa_rot = cDataProcess.EMWA_filter(1, 0.1F);
-                            float comp_rot = cDataProcess.complimentaryFilter(1, 0.1F);
+                            float emwa_rot = cDataProcess.EMWA_filter(2, 0.3F);
+                            float comp_rot = cDataProcess.complimentaryFilter(2, 0.3F);
 
                             dataStorage.writeDataForCSV(time, emwa_rot, comp_rot);
+                            dataStorage.writeDataforGraph(accX, accY, accZ, "Acc");
 
                             mHandler.post(() -> {
                                 String s1 = "EMWA filter: " + Math.round(emwa_rot);
@@ -426,7 +428,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                     }
                     if (dataStorage.getRunningTime() > 10000) stopData();
-//                    displayTheGraph(dataStorage.getXGraphdata(), dataStorage.getYGraphdata(), lineChart);
+                    displayTheGraph(dataStorage.getxDataGraph(), dataStorage.getY1data(),
+                            dataStorage.getY2data(), dataStorage.getY3data(),
+                            dataStorage.getDataName(), lineChart);
 
                 }
             }
@@ -452,7 +456,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void applyName(String name) {
         // Method to get the wanted filename from the dialog into the activity
-        dataStorage.writeCSV(name, mBluetoothConnected, command_fragment);
+        String fullname = name +".csv";
+        dataStorage.writeCSV(fullname, mBluetoothConnected, command_fragment);
         Toast.makeText(getApplicationContext(), "Saved", Toast.LENGTH_SHORT).show();
     }
 

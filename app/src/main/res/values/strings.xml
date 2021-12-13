@@ -5,7 +5,7 @@
     <string name="nav_close">Close navigation drawer</string>
     <string name="nav_open">Open navigation drawer</string>
     <string name="tv_settings_SampF">Sampling Frequency:</string>
-    <string name="hint_savedialog">Filename.ser</string>
+    <string name="hint_savedialog">Filename (no extension)</string>
     <string name="text_savedialog">Thank you for using our app. \nPlease choose your wanted filename to save the results</string>
     <string name="button_txt_main_start">Record</string>
     <string name="button_txt_main_stop">Save</string>

@@ -19,7 +19,16 @@ public class VisibilityChanger {
     }
 
     public static void setViewsInvisible(LineChart l1){
-        //Todo: also set views for internal things to invisible
         l1.setVisibility(View.INVISIBLE);
+    }
+
+    public static void setViewsInvisible(TextView v1, TextView v2){
+        v1.setVisibility(View.INVISIBLE);
+        v2.setVisibility(View.INVISIBLE);
+    }
+
+    public static void setViewsVisible(TextView v1, TextView v2){
+        v1.setVisibility(View.VISIBLE);
+        v2.setVisibility(View.VISIBLE);
     }
 }

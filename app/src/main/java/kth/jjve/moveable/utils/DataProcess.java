@@ -20,7 +20,6 @@ public class DataProcess {
     private float dT;
     private float[] gyroRot = {0, 0, 0};
     private float[] rotAcc = new float[3];
-    private final float alpha = 0.5F;
     private float filtered_value_EMWA = 0;
     private float filtered_value_complimentary = 0;
     
@@ -28,6 +27,7 @@ public class DataProcess {
         acc_x = ax;
         acc_y = ay;
         acc_z = az;
+        rotFromAcc();
     }
 
     public void setGyro(float gx, float gy, float gz, float dt) {
@@ -35,6 +35,7 @@ public class DataProcess {
         gyro_y = gy;
         gyro_z = gz;
         dT = dt;
+        rotFromGyroscope();
     }
 
     public void rotFromGyroscope() {
@@ -51,14 +52,14 @@ public class DataProcess {
         rotAcc[2] = (float) Math.toDegrees(Math.atan( (Math.sqrt(Math.pow(acc_x, 2) + Math.pow(acc_y, 2)) / acc_z )));
     }
 
-    public float EMWA_filter() {
+    public float EMWA_filter(int i, float alpha) {
         // method for exponential moving average filtering
-        filtered_value_EMWA =(alpha * filtered_value_EMWA + (1-alpha)*rotAcc[0]);
+        filtered_value_EMWA =(alpha * filtered_value_EMWA + (1-alpha)*rotAcc[i]);
         return filtered_value_EMWA;
     }
 
-    public float complimentaryFilter() {
-        filtered_value_complimentary =alpha * (filtered_value_complimentary + (dT * gyroRot[0])) + (1 - alpha) * rotAcc[0];
+    public float complimentaryFilter(int i, float alpha) {
+        filtered_value_complimentary =alpha * (filtered_value_complimentary + (dT * gyroRot[0])) + (1 - alpha) * rotAcc[i];
         return filtered_value_complimentary;
     }
 

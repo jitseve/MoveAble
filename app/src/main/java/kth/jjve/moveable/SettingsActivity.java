@@ -3,7 +3,6 @@ package kth.jjve.moveable;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -15,6 +14,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -25,7 +25,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.prefs.Preferences;
 
 import kth.jjve.moveable.datastorage.Settings;
 
@@ -39,10 +38,13 @@ public class SettingsActivity extends AppCompatActivity implements NavigationVie
     private NavigationView navigationView;
     private Spinner spinner;
     private ArrayAdapter<CharSequence> adapter;
+    private SwitchCompat switch1, switch2;
 
     /*---------------- SETTINGS -----------------*/
     private Settings cSettings;
     private String samplingFrequency;
+    private boolean cAcc = true;
+    private boolean cGyro = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +57,8 @@ public class SettingsActivity extends AppCompatActivity implements NavigationVie
         navigationView = findViewById(R.id.nav_view_settings);
         Button button1 = findViewById(R.id.button_prefs_Save);
         spinner = findViewById(R.id.dropdown_settings_frequencies);
+        switch1 = findViewById(R.id.switchAcc);
+        switch2 = findViewById(R.id.switchGyro);
 
         /*----------------- TOOLBAR -------------*/
         setSupportActionBar(toolbar);
@@ -88,6 +92,8 @@ public class SettingsActivity extends AppCompatActivity implements NavigationVie
 
         spinner.setOnItemSelectedListener(this);
 
+        switch1.setOnCheckedChangeListener(((buttonView, isChecked) -> cAcc = isChecked));
+        switch2.setOnCheckedChangeListener(((buttonView, isChecked) -> cGyro = isChecked));
     }
 
     @Override
@@ -129,19 +135,23 @@ public class SettingsActivity extends AppCompatActivity implements NavigationVie
         deserialise("settings.ser");
 
         if(cSettings != null){
-            //Todo: get settings here
             int spinnerPosition = adapter.getPosition(cSettings.getFrequency());
-            int frequencyInteger = cSettings.getFrequencyInteger();
             spinner.setSelection(spinnerPosition);
+            cAcc = cSettings.getAcc();
+            cGyro = cSettings.getGyro();
         }
+
+        switch1.setChecked(cAcc);
+        switch2.setChecked(cGyro);
     }
 
     private void setSettings(){
         //Method that sets the settings
         if(cSettings == null){
-            cSettings = new Settings(samplingFrequency);
+            cSettings = new Settings(samplingFrequency, cAcc, cGyro);
         }else{
             cSettings.setFrequency(samplingFrequency);
+            cSettings.setBtType(cAcc, cGyro);
         }
 
         serialise("settings.ser", cSettings);

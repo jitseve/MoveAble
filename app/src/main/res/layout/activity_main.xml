@@ -71,9 +71,9 @@
             android:id="@+id/iv_main_bluetoothEnabled"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:visibility="invisible"
             android:clickable="true"
             android:contentDescription="@string/descr_main_BluetoothSearch"
+            android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="@+id/iv_main_bluetoothSearch"
             app:layout_constraintEnd_toEndOf="@+id/iv_main_bluetoothSearch"
             app:layout_constraintStart_toStartOf="@+id/iv_main_bluetoothSearch"
@@ -84,27 +84,14 @@
             android:id="@+id/iv_main_bluetoothDisabled"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:visibility="invisible"
             android:clickable="true"
             android:contentDescription="@string/descr_main_BluetoothSearch"
+            android:visibility="invisible"
             app:layout_constraintBottom_toBottomOf="@+id/iv_main_bluetoothSearch"
             app:layout_constraintEnd_toEndOf="@+id/iv_main_bluetoothSearch"
             app:layout_constraintStart_toStartOf="@+id/iv_main_bluetoothSearch"
             app:layout_constraintTop_toTopOf="@+id/iv_main_bluetoothSearch"
             app:srcCompat="@drawable/ic_baseline_bluetooth_disabled_24" />
-
-        <ImageView
-            android:id="@+id/iv_main_datagraph"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:layout_marginEnd="10dp"
-            android:visibility="invisible"
-            app:layout_constraintBottom_toTopOf="@+id/button_main_record"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/main_toolbar"
-            app:srcCompat="@drawable/underconstruction" />
 
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/main_linechart"
@@ -119,45 +106,26 @@
             app:layout_constraintTop_toBottomOf="@id/main_toolbar" />
 
         <TextView
-            android:id="@+id/temp_tv_main_Time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="Time"
-            android:visibility="invisible"
-            app:layout_constraintEnd_toEndOf="@+id/iv_main_datagraph"
-            app:layout_constraintHorizontal_bias="0.497"
-            app:layout_constraintStart_toStartOf="@+id/iv_main_datagraph"
-            app:layout_constraintTop_toTopOf="@+id/iv_main_datagraph" />
-
-        <TextView
-            android:id="@+id/temp_tv_main_Acc"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="acc"
-            android:visibility="invisible"
-            app:layout_constraintEnd_toEndOf="@+id/temp_tv_main_Time"
-            app:layout_constraintStart_toStartOf="@+id/temp_tv_main_Time"
-            app:layout_constraintTop_toBottomOf="@+id/temp_tv_main_Time" />
-
-        <TextView
             android:id="@+id/temp_int_rot_from_acc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            tools:layout_editor_absoluteX="175dp"
-            tools:layout_editor_absoluteY="272dp"
-            app:layout_constraintEnd_toEndOf="@+id/temp_tv_main_Acc"
-            app:layout_constraintStart_toStartOf="@+id/temp_tv_main_Acc"
-            app:layout_constraintTop_toBottomOf="@+id/temp_tv_main_Acc"/>
+            android:textSize="20sp"
+            app:layout_constraintBottom_toTopOf="@+id/temp_int_rot_from_gyro"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/main_toolbar" />
 
         <TextView
             android:id="@+id/temp_int_rot_from_gyro"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@+id/temp_int_rot_from_acc"
+            android:textSize="20sp"
+            app:layout_constraintBottom_toTopOf="@+id/main_linechart"
             app:layout_constraintEnd_toEndOf="@+id/temp_int_rot_from_acc"
+            app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="@+id/temp_int_rot_from_acc"
-            tools:layout_editor_absoluteX="181dp" />
+            app:layout_constraintTop_toBottomOf="@+id/temp_int_rot_from_acc" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

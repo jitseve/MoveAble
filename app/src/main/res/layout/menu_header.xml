@@ -7,6 +7,4 @@
     android:background="@drawable/background"
     android:gravity="bottom">
 
-    <!-- Todo: Make more pretty -->
-
 </androidx.constraintlayout.widget.ConstraintLayout>

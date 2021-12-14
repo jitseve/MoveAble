@@ -2,17 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="kth.jjve.moveable">
-
     <!-- needed for sampling frequency above 200Hz -->
-    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
-    <!-- needed for writing CSVs -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" /> <!-- needed for writing CSVs -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
         tools:ignore="CoarseFineLocation" />
-
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
@@ -25,10 +24,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MoveAble">
         <activity
-            android:theme="@style/Theme_Dialog"
+            android:name=".InternalSensorResults"
+            android:exported="false" />
+        <activity
+            android:name=".BluetoothResults"
+            android:exported="false" />
+        <activity
             android:name=".dialogs.BluetoothActivity"
             android:excludeFromRecents="true"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme_Dialog" />
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />

@@ -32,6 +32,7 @@
             android:layout_height="wrap_content"
             android:text="@string/tv_settings_SampF"
             android:textColor="#000000"
+            android:textSize="20sp"
             app:layout_constraintBottom_toTopOf="@+id/button_prefs_Save"
             app:layout_constraintEnd_toStartOf="@+id/dropdown_settings_frequencies"
             app:layout_constraintHorizontal_bias="0.5"
@@ -50,6 +51,36 @@
             app:layout_constraintTop_toTopOf="@+id/tv_sampF_text"
             tools:ignore="SpeakableTextPresentCheck" />
 
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchAcc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOff="@string/acceleration"
+            android:textOn="@string/acceleration"
+            android:thumb="@drawable/thumb"
+            app:layout_constraintBottom_toTopOf="@+id/button_prefs_Save"
+            app:layout_constraintEnd_toStartOf="@+id/switchGyro"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_sampF_text"
+            app:showText="true"
+            app:track="@drawable/track" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchGyro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOff="@string/gyro"
+            android:textOn="@string/gyro"
+            android:thumb="@drawable/thumb"
+            app:layout_constraintBottom_toBottomOf="@+id/switchAcc"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toEndOf="@+id/switchAcc"
+            app:layout_constraintTop_toTopOf="@+id/switchAcc"
+            app:showText="true"
+            app:track="@drawable/track" />
+
         <Button
             android:id="@+id/button_prefs_Save"
             android:layout_width="wrap_content"
@@ -60,6 +91,26 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             tools:ignore="TextContrastCheck" />
+
+        <TextView
+            android:id="@+id/tv_acc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Acceleration"
+            android:textSize="20sp"
+            app:layout_constraintBottom_toTopOf="@+id/switchAcc"
+            app:layout_constraintEnd_toEndOf="@+id/switchAcc"
+            app:layout_constraintStart_toStartOf="@+id/switchAcc" />
+
+        <TextView
+            android:id="@+id/tv_gyro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Gyroscope"
+            android:textSize="20sp"
+            app:layout_constraintBottom_toTopOf="@+id/switchGyro"
+            app:layout_constraintEnd_toEndOf="@+id/switchGyro"
+            app:layout_constraintStart_toStartOf="@+id/switchGyro" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

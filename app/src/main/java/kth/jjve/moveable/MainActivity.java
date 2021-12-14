@@ -11,6 +11,7 @@ Date: 12.12.21
 import static kth.jjve.moveable.utilities.VisibilityChanger.setViewVisibility;
 import static kth.jjve.moveable.utilities.DisplayGraph.displayTheGraph;
 import static kth.jjve.moveable.utilities.VisibilityChanger.setViewsInvisible;
+import static kth.jjve.moveable.utilities.VisibilityChanger.setViewsVisible;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -45,6 +46,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+//import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.google.android.material.navigation.NavigationView;
 
@@ -67,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ImageView bluetoothSettings;
     private ImageView bluetoothDisabled;
     private ImageView bluetoothEnabled;
-    private TextView tempTimeView, tempAccView, tempIntRotAcc, tempIntRotGyro;
+    private TextView tempIntRotAcc, tempIntRotGyro;
     public LineChart lineChart;
     private Toolbar toolbar;
 
@@ -77,7 +79,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*------------------------- PREFS ---------------------*/
     private Settings cSettings;
     private int cFrequencyInteger;
-    private final String IMU_COMMAND = "Meas/Acc/13"; //Todo: get the IMU command from the preferences
+    private String IMU_COMMAND = "Meas/Acc/13";
+    private String command_fragment = "Meas/Acc";
+    private float deltaT;
 
     /*---------------- INTERNAL SENSORS -------------------*/
     private SensorManager mSensorManager;
@@ -86,18 +90,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     /*---------------- DATA PROCESS -------------------*/
     private DataProcess cDataProcess;
-    // internal sensor variables, can probs be turned into local variables for some
-    private float dT;
-    private long timestamp = 0;
-    private long initT;
-    private float complimentary_filtered_value;
-    private float EWMA_filtered_value;
+    private long prev_timestamp = 0;
 
     /*------------------------- BLUETOOTH ---------------------*/
     private BluetoothDevice mSelectedDevice = null;
     private boolean mBluetoothConnected;
     private final byte MOVESENSE_REQ = 1, MOVESENSE_RES = 2, REQUEST_ID = 99;
     private BluetoothGatt mBluetoothGatt = null;
+    private byte[] command;
+    public boolean resetBT = false;
 
     public static final UUID MOVESENSE_20_SERVICE =
             UUID.fromString("34802252-7185-4d5d-b431-630e7050e8f0");
@@ -129,9 +130,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         bluetoothEnabled = findViewById(R.id.iv_main_bluetoothEnabled);
         Button buttonRecord = findViewById(R.id.button_main_record);
         Button buttonSave = findViewById(R.id.button_main_stop);
-        ImageView graph = findViewById(R.id.iv_main_datagraph);
-        tempTimeView = findViewById(R.id.temp_tv_main_Time); //Todo: when graph is done, these can disappear
-        tempAccView = findViewById(R.id.temp_tv_main_Acc);
         tempIntRotAcc = findViewById(R.id.temp_int_rot_from_acc);
         tempIntRotGyro = findViewById(R.id.temp_int_rot_from_gyro);
         lineChart = findViewById(R.id.main_linechart);
@@ -145,10 +143,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
       
         /*-------------- LISTENERS --------------*/
         bluetoothSettings.setOnClickListener(this::onClick);
-        //Todo: change functionality of these buttons
         bluetoothDisabled.setOnClickListener(this::onClick);
-
-        bluetoothEnabled.setOnClickListener(this::onClick);
+        bluetoothEnabled.setOnClickListener(v -> MainActivity.this.resetBluetooth());
 
         buttonRecord.setOnClickListener(v -> {
             Toast.makeText(getApplicationContext(), "Recording has started", Toast.LENGTH_SHORT).show();
@@ -164,6 +160,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onResume(){
         super.onResume();
         navigationView.setCheckedItem(R.id.nav_home);
+        getSettings();
+
     }
 
     @Override
@@ -176,12 +174,33 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        if (mBluetoothGatt != null){
+            mBluetoothGatt.disconnect();
+            try {
+                mBluetoothGatt.close();
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
         int id = menuItem.getItemId();
         if (id == R.id.nav_settings){
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);
+        } else if (id == R.id.nav_resBL){
+            Intent intent = new Intent(MainActivity.this, BluetoothResults.class);
+            startActivity(intent);
+        } else if (id == R.id.nav_resIN){
+            Intent intent = new Intent(MainActivity.this, InternalSensorResults.class);
+            startActivity(intent);
         }
+
         drawerLayout.closeDrawer(GravityCompat.START);
         return true;
     }
@@ -215,7 +234,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Method to acquire the data. When connected to bluetooth, that sensor is used
         // Otherwise, internal sensors are used
         dataStorage = new DataStorage();
+        cDataProcess = new DataProcess();
+        setViewsVisible(tempIntRotAcc, tempIntRotGyro);
         if (mBluetoothConnected){
+            if (command_fragment.equals("/Meas/Gyro")){
+                setViewsInvisible(tempIntRotAcc, tempIntRotGyro);
+            } else if (command_fragment.equals("/Meas/Acc")){
+                tempIntRotGyro.setVisibility(View.INVISIBLE);
+            }
             lineChart.setVisibility(View.VISIBLE);
             if (mSelectedDevice != null){
                 mBluetoothGatt =
@@ -224,9 +250,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else{
             mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
             mSensorManager.registerListener(this, mGyroscope, SensorManager.SENSOR_DELAY_NORMAL);
-            timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
-            initT = System.currentTimeMillis();
-
+            prev_timestamp = System.currentTimeMillis(); // for 1st value of gyro rotation
         }
     }
 
@@ -234,22 +258,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Method to stop the acquiring of data
         setViewsInvisible(lineChart);
         if (mBluetoothConnected) {
-            if (mBluetoothGatt != null) {
-                mBluetoothGatt.disconnect();
-                setViewsInvisible(lineChart);
-                try {
-                    mBluetoothGatt.close();
-                    Log.i(LOG_TAG, "bluetooth gatt closed");
-                } catch (Exception e) {
-                    Log.i(LOG_TAG, "Exception is " + e);
-                    e.printStackTrace();
-                }
-            }
+            resetBluetooth();
         } else{
           mSensorManager.unregisterListener(this);
-          dataStorage.writeCSV();
         }
+        setViewsInvisible(tempIntRotAcc, tempIntRotGyro);
         openSaveDialog();
+    }
+
+    public void resetBluetooth(){
+        if (mBluetoothGatt != null){
+            resetBT = true;
+            mBtGattCallback.onServicesDiscovered(mBluetoothGatt, 0);
+            mBluetoothGatt.disconnect();
+            try {
+                mBluetoothGatt.close();
+                Log.i(LOG_TAG, "bluetooth gatt closed");
+            } catch (Exception e) {
+                Log.i(LOG_TAG, "Exception is " + e);
+                e.printStackTrace();
+            }
+        }
+        setViewVisibility(bluetoothDisabled, bluetoothEnabled, bluetoothSettings);
+        mBluetoothConnected = false;
     }
 
     /*||||||||||| BLUETOOTH CALLBACK |||||||||||*/
@@ -288,11 +319,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     BluetoothGattCharacteristic commandChar =
                             movesenseService.getCharacteristic(MOVESENSE_20_COMMAND_CHAR);
-                    byte[] command =
-                            TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
+                    if (resetBT) {
+                        command = new byte[2];
+                        command[0] = 2;
+                        command[1] = 99;
+                    } else{
+                        command =
+                                TypeConverter.stringToAsciiArray(REQUEST_ID, IMU_COMMAND);
+                    }
                     commandChar.setValue(command);
                     boolean wasSuccessful = mBluetoothGatt.writeCharacteristic(commandChar);
                     Log.i("writeCharacteristic", "was successful = " + wasSuccessful);
+                    if (wasSuccessful && resetBT){
+                        resetBT = false;
+                        mHandler.post(() -> Toast.makeText(getApplicationContext(), "Bluetooth reset", Toast.LENGTH_SHORT).show());
+                    }
                 } else {
                     Log.i(LOG_TAG, "service not found");
                 }
@@ -329,38 +370,87 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (MOVESENSE_20_DATA_CHAR.equals(characteristic.getUuid())) {
                 byte[] data = characteristic.getValue();
                 if (data[0] == MOVESENSE_RES && data[1] == REQUEST_ID) {
-                    // parse and interpret the data, ...
                     int time = TypeConverter.fourBytesToInt(data, 2);
-                    float accX = TypeConverter.fourBytesToFloat(data, 6);
-                    float accY = TypeConverter.fourBytesToFloat(data, 10);
-                    float accZ = TypeConverter.fourBytesToFloat(data, 14);
+                    int len = data.length;
+                    if (command_fragment.equals("/Meas/Acc/")){
+                        for (int i = 6; i < len; i+=12){
+                            float accX = TypeConverter.fourBytesToFloat(data, i);
+                            float accY = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float accZ = TypeConverter.fourBytesToFloat(data, 8 + i);
 
-                    // Todo: filter the data (one filter function) and add that data to the datastorage
+                            cDataProcess.setAcceleration(accX, accY, accZ);
+                            float rot = cDataProcess.EMWA_filter(2, 0.3F);
 
-                    dataStorage.writeData(time, accX);
+                            dataStorage.writeData(time, rot);
+                            dataStorage.writeDataforGraph(accX, accY, accZ, "acc");
 
-                    displayTheGraph(dataStorage.getXGraphdata(), dataStorage.getYGraphdata(), lineChart);
-                    String accStr = "" + accX + " " + accY + " " + accZ;
-                    Log.i("acc data", "" + time + " " + accStr);
+                            mHandler.post(() ->{
+                                String s1 = "EMWA filter: " + Math.round(rot);
+                                tempIntRotAcc.setText(s1);
+                            });
 
+                            String accStr = "" + accX + " " + accY + " " + accZ;
+                            Log.i("acc data", "" + time + " " + accStr);}
+                    } else if (command_fragment.equals("/Meas/Gyro/")){
+                        for (int i = 6; i < len; i+=12){
+                            float gyroX = TypeConverter.fourBytesToFloat(data, i);
+                            float gyroY = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float gyroZ = TypeConverter.fourBytesToFloat(data, 8 + i);
+
+                            cDataProcess.setGyro(gyroX, gyroY, gyroZ, deltaT);
+                            dataStorage.writeDataforGraph(gyroX, gyroY, gyroZ, "Gyro");
+                            dataStorage.writeData(time, gyroY);
+
+                            String gyroStr = "" + gyroX + " " + gyroY + " " + gyroZ;
+                            Log.i("gyro data", "" + time + " " + gyroStr);}
+                    } else{
+                        for (int i = 6; i < (len/2 +3); i+= 12){
+                            int gyro_start = (len - 6) / 2;
+                            float accX = TypeConverter.fourBytesToFloat(data, i);
+                            float accY = TypeConverter.fourBytesToFloat(data, 4 + i);
+                            float accZ = TypeConverter.fourBytesToFloat(data, 8 + i);
+                            float gyroX = TypeConverter.fourBytesToFloat(data,  gyro_start + i);
+                            float gyroY = TypeConverter.fourBytesToFloat(data,  gyro_start + 4+ i);
+                            float gyroZ = TypeConverter.fourBytesToFloat(data, gyro_start + 4 + i);
+
+                            cDataProcess.setAcceleration(accX, accY, accZ);
+                            cDataProcess.setGyro(gyroX, gyroY, gyroZ, deltaT);
+                            float emwa_rot = cDataProcess.EMWA_filter(2, 0.3F);
+                            float comp_rot = cDataProcess.complimentaryFilter(2, 0.3F);
+
+                            dataStorage.writeDataForCSV(time, emwa_rot, comp_rot);
+                            dataStorage.writeDataforGraph(accX, accY, accZ, "Acc");
+
+                            mHandler.post(() -> {
+                                String s1 = "EMWA filter: " + Math.round(emwa_rot);
+                                tempIntRotAcc.setText(s1);
+                                s1 = "Complimentary filter: " + Math.round(comp_rot);
+                                tempIntRotGyro.setText(s1);
+                            });
+
+                            String accStr = "" + accX + " " + accY + " " + accZ;
+                            Log.i("acc data", "" + time + " " + accStr);
+                            String gyroStr = "" + gyroX + " " + gyroY + " " + gyroZ;
+                            Log.i("gyro data", "" + time + " " + gyroStr);
+                        }
+                    }
                     if (dataStorage.getRunningTime() > 10000) stopData();
+                    displayTheGraph(dataStorage.getxDataGraph(), dataStorage.getY1data(),
+                            dataStorage.getY2data(), dataStorage.getY3data(),
+                            dataStorage.getDataName(), lineChart);
+
                 }
             }
         }
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
-            Log.i(LOG_TAG, "onDescriptorWrite, status " + status);
-
             if (CLIENT_CHAR_CONFIG.equals(descriptor.getUuid()))
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     // if success, we should receive data in onCharacteristicChanged
-                    mHandler.post(() -> {
-                        //Todo: here we could update something to the ui, but we could also not
-                    });
+                    Log.i("onDescriptorWrite" , "GATT SUCCESSS");
                 }
         }
-
     };
 
     /*||||||||||| SAVE DIALOG |||||||||||*/
@@ -373,7 +463,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void applyName(String name) {
         // Method to get the wanted filename from the dialog into the activity
-        // Todo: save the data here using the name somehow
+        String fullname = name +".csv";
+        dataStorage.writeCSV(fullname, mBluetoothConnected, command_fragment);
+        Toast.makeText(getApplicationContext(), "Saved", Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -385,42 +477,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /*||||||||||| SENSOR ACTIVITY |||||||||||*/
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (cDataProcess == null) cDataProcess = new DataProcess();
         if (event.sensor.getType()==Sensor.TYPE_ACCELEROMETER){
             cDataProcess.setAcceleration(event.values[0], event.values[1], event.values[2]);
-            cDataProcess.rotFromAcc();
 
         }
 
         if (event.sensor.getType()==Sensor.TYPE_GYROSCOPE){
-            dT = (System.currentTimeMillis() - timestamp) / (float) 1000; //units: seconds
-            timestamp = System.currentTimeMillis(); // for storing old value
+            // internal sensor variables, can probs be turned into local variables for some
+            float dT = (System.currentTimeMillis() - prev_timestamp) / (float) 1000; //units: seconds
+            prev_timestamp = System.currentTimeMillis(); // for storing old value
             cDataProcess.setGyro((float) Math.toDegrees(event.values[0]), (float) Math.toDegrees(event.values[1]), (float) Math.toDegrees(event.values[2]), dT);
-            cDataProcess.rotFromGyroscope();
         }
 
-        EWMA_filtered_value = cDataProcess.EMWA_filter();
-        String s1 = "EMWA filter: " + Math.round(EWMA_filtered_value);
+        float EMWA_rot = cDataProcess.EMWA_filter(2, 0.5F);
+        String s1 = "EMWA filter: " + Math.round(EMWA_rot);
         tempIntRotAcc.setText(s1);
-        //Log.i(LOG_TAG, s);
 
-        complimentary_filtered_value = cDataProcess.complimentaryFilter();
-        String s2 ="Complimentary filter: " + Math.round(cDataProcess.complimentaryFilter());
+        float comp_rot = cDataProcess.complimentaryFilter(2, 0.5F);
+        String s2 ="Complimentary filter: " + Math.round(comp_rot);
         tempIntRotGyro.setText(s2);
-        //Log.i(LOG_TAG, s);
 
-        dataStorage.writeDataForCSV(timestamp, EWMA_filtered_value, complimentary_filtered_value);
+        dataStorage.writeDataForCSV(prev_timestamp, EMWA_rot, comp_rot);
 
-        if ((System.currentTimeMillis() - initT) > 10000) {
-            stopData();
-        }
+        if (dataStorage.getRunningTime() > 10000) stopData();
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // need to overwrite, when implement sensor stuff
         Toast.makeText(getApplicationContext(), "Sensor accuracy changed", Toast.LENGTH_SHORT).show();
-        // Todo: check if we need to add something here if accuracy has changed
     }
 
     /*||||||||||| INITIALISATIONS |||||||||||*/
@@ -445,7 +530,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (cSettings != null){
             cFrequencyInteger = cSettings.getFrequencyInteger();
-            //dT = 1/ (double) cFrequencyInteger; //Todo: prob call it something else (ext sensor)
+            IMU_COMMAND = cSettings.getCommand();
+            command_fragment = cSettings.getCommandFragment();
+            deltaT = (float) 1/cFrequencyInteger;
         }else{
             Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
             startActivity(intent);

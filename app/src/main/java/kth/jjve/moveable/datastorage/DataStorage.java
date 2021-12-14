@@ -7,6 +7,7 @@ List two saves all the data (length is growing).
 
 import android.content.Context;
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,11 +18,15 @@ import java.util.Collections;
 import java.util.List;
 
 public class DataStorage {
-    List<Integer> xDataGraph;
-    List<Integer> xData;
-    List<Float> yDataGraph;
+    List<Long> xDataGraph;
+    List<Long> xData;
+    List<Float> yDataGraph1;
+    List<Float> yDataGraph2;
+    List<Float> yDataGraph3;
     List<Float> yData;
-    Integer firstX;
+    String dataName;
+    long firstX;
+    long currentTime;
     boolean firstRun = true;
 
     List<Long> timeData;
@@ -30,8 +35,10 @@ public class DataStorage {
 
     public DataStorage() {
         // Initialise the class
-        xDataGraph = new ArrayList<>(Collections.nCopies(100, 0));
-        yDataGraph = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        xDataGraph = new ArrayList<>(Collections.nCopies(100, (long) 0));
+        yDataGraph1 = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        yDataGraph2 = new ArrayList<>(Collections.nCopies(100, (float) 0));
+        yDataGraph3 = new ArrayList<>(Collections.nCopies(100, (float) 0));
 
         xData = new ArrayList<>();
         yData = new ArrayList<>();
@@ -44,65 +51,98 @@ public class DataStorage {
     public void writeData(int x, float y) {
         // Method to write the data into the lists
         if (firstRun) {
-            firstX = x; // save the first timestamp
+            firstX = (long) x; // save the first timestamp
             firstRun = false;
         }
-        xDataGraph.add(x - firstX);      // add x to the end of the list
-        xDataGraph.remove(0);      // remove first item of the list
-        yDataGraph.add(y);
-        yDataGraph.remove(0);
-
-        xData.add(x - firstX);
+        currentTime = x - firstX;
+        xData.add(currentTime);
         yData.add(y);
     }
 
+    public void writeDataforGraph(float y1, float y2, float y3, String name){
+        xDataGraph.add(currentTime);
+        yDataGraph1.add(y1);
+        yDataGraph2.add(y2);
+        yDataGraph3.add(y3);
+
+        xDataGraph.remove(0);
+        yDataGraph1.remove(0);
+        yDataGraph2.remove(0);
+        yDataGraph3.remove(0);
+
+        dataName = name;
+    }
+
     public void writeDataForCSV(long time, float ewma, float complimentary) {
-        timeData.add(time);
+        if (firstRun){
+            firstX = time;
+            firstRun = false;
+        }
+        currentTime = time - firstX;
+        timeData.add(currentTime);
         ewmaData.add(ewma);
         complimentaryData.add(complimentary);
     }
 
-    public void writeCSV(){
-        String filename = "data.csv";
+    public void writeCSV(String filename, boolean bluetoothconnected, String command_fragment){
         File directoryDownload = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File logDir = new File (directoryDownload, "data"); //Creates a new folder in DOWNLOAD directory
         logDir.mkdirs();
         File file = new File(logDir, filename);
-
         FileOutputStream outputStream = null;
         try {
-            try {
-                outputStream = new FileOutputStream(file, true);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+            outputStream = new FileOutputStream(file, false);
+            if (bluetoothconnected){
+                if (command_fragment.equals("/Meas/Acc") || command_fragment.equals("/Meas/Gyro")){
+                    for (int i = 0; i < xData.size(); i++) {
+                        outputStream.write((xData.get(i) + ",").getBytes());
+                        outputStream.write((yData.get(i) + "\n").getBytes());}
+                } else{
+                    for (int i = 0; i < timeData.size(); i++) {
+                        outputStream.write((timeData.get(i) + ",").getBytes());
+                        outputStream.write((ewmaData.get(i) + ",").getBytes());
+                        outputStream.write((complimentaryData.get(i) + "\n").getBytes());
+                    }
+                }
+
+            }else{
+                for (int i = 0; i < timeData.size(); i++) {
+                    outputStream.write((timeData.get(i) + ",").getBytes());
+                    outputStream.write((ewmaData.get(i) + ",").getBytes());
+                    outputStream.write((complimentaryData.get(i) + "\n").getBytes());
+                }
             }
-            for (int i = 0; i < timeData.size(); i += 3) {
-                outputStream.write((timeData.get(i) + ",").getBytes());
-                outputStream.write((ewmaData.get(i + 1) + ",").getBytes());
-                outputStream.write((complimentaryData.get(i + 2) + "\n").getBytes());
-            }
-            outputStream.close();
         } catch (Exception e) {
             e.printStackTrace();
+            Log.i("Write CSV", "something went wrong" + e);
         }
     }
 
-    public List<Integer> getXGraphdata() {
+    public List<Long> getxDataGraph() {
         return xDataGraph;
     }
 
-    public List<Float> getYGraphdata() {
-        return yDataGraph;
+    public List<Float> getY1data() {
+        return yDataGraph1;
+    }
+    public List<Float> getY2data() {
+        return yDataGraph2;
+    }
+    public List<Float> getY3data() {
+        return yDataGraph3;
     }
 
-    public List<Integer> getXData() {
+    public String getDataName(){
+        return dataName;
+    }
+    public List<Long> getXData() {
         return xData;
     }
 
     public List<Float> getYData(){return yData;}
 
-    public Integer getRunningTime(){
-        return xDataGraph.get(99);
+    public Long getRunningTime(){
+        return currentTime;
     }
 }
 

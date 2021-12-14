@@ -13,6 +13,14 @@
             android:title="Settings"
             android:icon="@drawable/ic_baseline_settings_applications_24"/>
 
+        <item
+            android:id="@+id/nav_resBL"
+            android:title="Results Bluetooth"/>
+
+        <item
+            android:id="@+id/nav_resIN"
+            android:title="Results Internal Sensor"/>
+
     </group>
 
 </menu>
